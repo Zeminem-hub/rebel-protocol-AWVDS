@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 # ── Add your avwds project to path ──────────────────────────
 # Change this to your actual project path
-AVWDS_PATH = r"D:\PROJECT\avwds"
+AVWDS_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AVWDS_PATH)
 
 # ── Routes ───────────────────────────────────────────────────
@@ -102,5 +102,5 @@ def scan():
 
 if __name__ == "__main__":
     import os
-port = int(os.environ.get("PORT", 5000))
-app.run(debug=False, host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host="0.0.0.0", port=port)
