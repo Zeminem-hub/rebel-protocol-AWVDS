@@ -28,10 +28,10 @@ scans websites for common vulnerabilities including:
 ## ⚙️ Installation
 
 ### 1. Clone the project
-git clone https://github.com/YOURUSERNAME/rebel-protocol.git
+git clone https://github.com/Zeminem-hub/rebel-protocol-AWVDS.git
 
 ### 2. Go into the folder
-cd rebel-protocol
+cd rebel-protocol-AWVDS
 
 ### 3. Create virtual environment
 python -m venv venv
