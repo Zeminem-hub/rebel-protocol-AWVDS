@@ -1,6 +1,10 @@
+import asyncio
+
 import httpx
+
+from utils.logger import critical
 from utils.payloads import SENSITIVE_PATHS
-from utils.logger import critical, warning
+
 
 class SensitiveFileScanner:
     def __init__(self):
@@ -8,21 +12,21 @@ class SensitiveFileScanner:
 
     async def scan(self, base_url):
         base = base_url.rstrip("/")
-        
-        async with httpx.AsyncClient(
-            timeout=8,
-            follow_redirects=False  # Don't follow redirects — 301/302 ≠ found
-        ) as client:
-            for path in SENSITIVE_PATHS:
-                url = base + path
-                try:
-                    response = await client.get(url)
-                    
+        semaphore = asyncio.Semaphore(8)
+
+        async with httpx.AsyncClient(timeout=5, follow_redirects=False) as client:
+            async def probe(path):
+                async with semaphore:
+                    url = base + path
+                    try:
+                        response = await client.get(url)
+                    except Exception:
+                        return
+
                     if response.status_code == 200:
                         severity = "CRITICAL" if any(
-                            x in path for x in [".env", ".git", "config", "sql", "backup"]
+                            marker in path for marker in [".env", ".git", "config", "sql", "backup"]
                         ) else "HIGH"
-                        
                         finding = {
                             "type": "Sensitive File Exposed",
                             "url": url,
@@ -32,9 +36,8 @@ class SensitiveFileScanner:
                         }
                         self.findings.append(finding)
                         critical(f"Sensitive file found: {url}")
-                    
+
                     elif response.status_code == 403:
-                        # 403 = file exists but forbidden — still worth noting
                         finding = {
                             "type": "Sensitive Path Exists (Forbidden)",
                             "url": url,
@@ -43,8 +46,7 @@ class SensitiveFileScanner:
                             "description": f"Path '{path}' exists but access is restricted"
                         }
                         self.findings.append(finding)
-                
-                except Exception:
-                    pass
+
+            await asyncio.gather(*(probe(path) for path in SENSITIVE_PATHS))
 
         return self.findings

@@ -1,747 +1,554 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Rebel Protocol — AVWDS</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet"/>
+<title>Autonomous Security Research</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
   :root {
-    --red:    #ff0033;
-    --green:  #00ff41;
-    --dark:   #030a03;
-    --panel:  #050f05;
-    --border: #0f3d0f;
-    --dim:    #1a1a1a;
-    --text:   #a0ffa0;
-    --muted:  #3a5a3a;
+    --black: #010403;
+    --void: #030806;
+    --panel: rgba(4, 18, 12, 0.72);
+    --grid: rgba(47, 255, 146, 0.055);
+    --green: #2dff91;
+    --green-soft: #83ffc0;
+    --red: #ff3b4f;
+    --line: rgba(45, 255, 145, 0.22);
+    --line-soft: rgba(45, 255, 145, 0.11);
+    --text: #d8f8e9;
+    --muted: #789686;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
 
   body {
-    background: var(--dark);
+    min-height: 100vh;
+    background: var(--black);
     color: var(--text);
-    font-family: 'Share Tech Mono', monospace;
+    font-family: "IBM Plex Mono", monospace;
     overflow-x: hidden;
-    cursor: crosshair;
   }
 
-  /* Scanline overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,255,65,0.015) 2px,
-      rgba(0,255,65,0.015) 4px
-    );
-    pointer-events: none;
-    z-index: 9999;
-  }
-
-  /* Noise texture */
+  body::before,
   body::after {
-    content: '';
+    content: "";
     position: fixed;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
     pointer-events: none;
-    z-index: 9998;
-    opacity: 0.4;
+    z-index: 20;
   }
 
-  /* NAV */
-  nav {
+  body::before {
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 4px),
+      linear-gradient(90deg, transparent, rgba(45,255,145,0.025), transparent);
+    mix-blend-mode: screen;
+    opacity: 0.5;
+  }
+
+  body::after {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.17'/%3E%3C/svg%3E");
+    opacity: 0.13;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  .page {
+    position: relative;
+    min-height: 100vh;
+    isolation: isolate;
+    background:
+      radial-gradient(circle at 50% 38%, rgba(45,255,145,0.13), transparent 32rem),
+      radial-gradient(circle at 50% 100%, rgba(255,59,79,0.06), transparent 40rem),
+      linear-gradient(180deg, #020604 0%, #010302 100%);
+  }
+
+  .signal-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.34;
+    z-index: -3;
+  }
+
+  .page::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+      linear-gradient(115deg, transparent 0 48%, rgba(45,255,145,0.06) 49%, transparent 50% 100%);
+    background-size: 72px 72px, 72px 72px, 100% 100%;
+    mask-image: radial-gradient(circle at center, black 0 58%, transparent 86%);
+    animation: gridDrift 28s linear infinite;
+  }
+
+  .page::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(90deg, transparent 0 8%, rgba(45,255,145,0.12) 8.1%, transparent 8.3% 91.7%, rgba(45,255,145,0.12) 91.9%, transparent 92%),
+      linear-gradient(180deg, rgba(1,4,3,0), rgba(1,4,3,0.82) 72%, #010302);
+  }
+
+  @keyframes gridDrift {
+    from { background-position: 0 0, 0 0, 0 0; }
+    to { background-position: 72px 72px, 72px 72px, 0 0; }
+  }
+
+  .nav {
     position: fixed;
-    top: 0; left: 0; right: 0;
-    display: flex;
-    justify-content: space-between;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    padding: 1rem 3rem;
-    border-bottom: 1px solid var(--border);
-    background: rgba(3,10,3,0.95);
-    backdrop-filter: blur(10px);
-    z-index: 100;
+    gap: 1rem;
+    padding: 1.05rem clamp(1.25rem, 4vw, 4rem);
+    border-bottom: 1px solid var(--line-soft);
+    background: rgba(1, 5, 3, 0.82);
+    backdrop-filter: blur(18px);
   }
 
-  .nav-logo {
-    font-family: 'Orbitron', monospace;
-    font-weight: 900;
-    font-size: 1.1rem;
-    color: var(--red);
-    letter-spacing: 0.2em;
-    text-shadow: 0 0 20px rgba(255,0,51,0.8);
-  }
-
-  .nav-links { display: flex; gap: 2rem; }
+  .nav-mark,
+  .nav-state,
   .nav-links a {
+    font-size: 0.68rem;
     color: var(--muted);
-    text-decoration: none;
-    font-size: 0.8rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    transition: color 0.2s;
-  }
-  .nav-links a:hover { color: var(--green); }
-
-  .nav-btn {
-    background: transparent;
-    border: 1px solid var(--red);
-    color: var(--red);
-    padding: 0.5rem 1.5rem;
-    font-family: 'Orbitron', monospace;
-    font-size: 0.75rem;
-    letter-spacing: 0.15em;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.2s;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
   }
-  .nav-btn:hover {
-    background: var(--red);
-    color: #000;
-    box-shadow: 0 0 20px rgba(255,0,51,0.5);
+
+  .nav-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
   }
 
-  /* HERO */
+  .nav-mark::before {
+    content: "";
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 18px rgba(45,255,145,0.8);
+  }
+
+  .nav-links {
+    justify-self: center;
+    display: flex;
+    gap: clamp(1rem, 3vw, 2.5rem);
+  }
+
+  .nav-links a { transition: color 0.2s ease, text-shadow 0.2s ease; }
+  .nav-links a:hover { color: var(--green-soft); text-shadow: 0 0 16px rgba(45,255,145,0.35); }
+  .nav-state { justify-self: end; color: rgba(216,248,233,0.62); }
+
   .hero {
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    display: grid;
+    place-items: center;
+    padding: 7rem clamp(1.25rem, 4vw, 4rem) 2rem;
+    position: relative;
+  }
+
+  .hero-inner {
+    width: min(1120px, 100%);
+    display: grid;
+    justify-items: center;
     text-align: center;
-    padding: 6rem 2rem 4rem;
+    gap: 1.45rem;
     position: relative;
   }
 
-  .hero-grid {
+  .hero-inner::before,
+  .hero-inner::after {
+    content: "";
     position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,255,65,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,255,65,0.03) 1px, transparent 1px);
-    background-size: 50px 50px;
-    animation: gridMove 20s linear infinite;
-  }
-
-  @keyframes gridMove {
-    0%   { background-position: 0 0; }
-    100% { background-position: 50px 50px; }
-  }
-
-  .glitch-wrapper { position: relative; margin-bottom: 1rem; }
-
-  .hero-title {
-    font-family: 'Orbitron', monospace;
-    font-weight: 900;
-    font-size: clamp(2.5rem, 8vw, 6rem);
-    color: var(--red);
-    text-shadow:
-      0 0 40px rgba(255,0,51,0.8),
-      0 0 80px rgba(255,0,51,0.4);
-    letter-spacing: 0.1em;
-    position: relative;
-    animation: flicker 8s infinite;
-  }
-
-  @keyframes flicker {
-    0%, 95%, 100% { opacity: 1; }
-    96%            { opacity: 0.8; }
-    97%            { opacity: 1; }
-    98%            { opacity: 0.6; }
-    99%            { opacity: 1; }
-  }
-
-  .hero-title::before, .hero-title::after {
-    content: attr(data-text);
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    font-family: 'Orbitron', monospace;
-    font-weight: 900;
-  }
-  .hero-title::before {
-    color: #00ffff;
-    animation: glitch1 4s infinite;
-    clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
-  }
-  .hero-title::after {
-    color: var(--red);
-    animation: glitch2 4s infinite;
-    clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
-  }
-
-  @keyframes glitch1 {
-    0%, 90%, 100% { transform: translate(0); opacity: 0; }
-    92% { transform: translate(-3px, 1px); opacity: 0.8; }
-    94% { transform: translate(3px, -1px); opacity: 0.6; }
-    96% { transform: translate(0); opacity: 0; }
-  }
-  @keyframes glitch2 {
-    0%, 88%, 100% { transform: translate(0); opacity: 0; }
-    90% { transform: translate(3px, 2px); opacity: 0.8; }
-    92% { transform: translate(-3px, -1px); opacity: 0.5; }
-    94% { transform: translate(0); opacity: 0; }
-  }
-
-  .hero-subtitle {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: clamp(0.9rem, 2vw, 1.2rem);
-    color: var(--green);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    margin-bottom: 1.5rem;
+    top: 50%;
+    width: min(18vw, 190px);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
     opacity: 0.8;
   }
 
-  .hero-desc {
-    max-width: 600px;
-    color: var(--muted);
-    font-size: 0.9rem;
-    line-height: 1.8;
-    margin-bottom: 3rem;
+  .hero-inner::before { right: calc(100% - 8rem); }
+  .hero-inner::after { left: calc(100% - 8rem); }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--line-soft);
+    background: rgba(1, 8, 5, 0.62);
+    color: var(--green-soft);
+    font-size: 0.68rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
   }
 
-  .hero-desc span { color: var(--green); }
+  .eyebrow::before,
+  .eyebrow::after {
+    content: "";
+    width: 28px;
+    height: 1px;
+    background: var(--line);
+  }
 
-  .hero-btns { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
-
-  .btn-primary {
-    background: var(--red);
-    color: #000;
-    border: none;
-    padding: 1rem 2.5rem;
-    font-family: 'Orbitron', monospace;
+  .hero h1 {
+    max-width: 980px;
+    font-family: "Rajdhani", sans-serif;
+    font-size: clamp(3.1rem, 8.2vw, 8rem);
+    line-height: 0.88;
     font-weight: 700;
-    font-size: 0.85rem;
-    letter-spacing: 0.2em;
-    cursor: pointer;
-    text-decoration: none;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    transition: all 0.2s;
-    box-shadow: 0 0 30px rgba(255,0,51,0.4);
-    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
-  }
-  .btn-primary:hover {
-    box-shadow: 0 0 50px rgba(255,0,51,0.8);
-    transform: translateY(-2px);
+    color: #effff6;
+    text-shadow:
+      0 0 18px rgba(45,255,145,0.16),
+      0 0 64px rgba(45,255,145,0.12);
   }
 
-  .btn-secondary {
-    background: transparent;
-    color: var(--green);
-    border: 1px solid var(--green);
-    padding: 1rem 2.5rem;
-    font-family: 'Orbitron', monospace;
-    font-size: 0.85rem;
-    letter-spacing: 0.2em;
-    cursor: pointer;
-    text-decoration: none;
-    text-transform: uppercase;
-    transition: all 0.2s;
-    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
-  }
-  .btn-secondary:hover {
-    background: rgba(0,255,65,0.1);
-    box-shadow: 0 0 30px rgba(0,255,65,0.3);
+  .hero-copy {
+    max-width: 720px;
+    color: rgba(216,248,233,0.68);
+    font-size: clamp(0.86rem, 1.6vw, 1rem);
+    line-height: 1.9;
   }
 
-  /* STATS BAR */
-  .stats-bar {
-    display: flex;
-    gap: 0;
-    border: 1px solid var(--border);
-    margin-top: 4rem;
-    width: 100%;
-    max-width: 700px;
-    position: relative;
-    z-index: 1;
-  }
-  .stat {
-    flex: 1;
-    text-align: center;
-    padding: 1.2rem;
-    border-right: 1px solid var(--border);
-  }
-  .stat:last-child { border-right: none; }
-  .stat-num {
-    font-family: 'Orbitron', monospace;
-    font-size: 1.8rem;
-    color: var(--red);
-    font-weight: 700;
-    text-shadow: 0 0 15px rgba(255,0,51,0.6);
-  }
-  .stat-label {
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin-top: 0.3rem;
+  .hero-copy strong {
+    color: var(--green-soft);
+    font-weight: 500;
   }
 
-  /* FEATURES */
-  .section {
-    padding: 6rem 3rem;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  .section-header {
-    text-align: center;
-    margin-bottom: 4rem;
-  }
-
-  .section-tag {
-    font-size: 0.7rem;
-    color: var(--red);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-
-  .section-title {
-    font-family: 'Orbitron', monospace;
-    font-size: clamp(1.5rem, 4vw, 2.5rem);
-    color: var(--green);
-    text-shadow: 0 0 30px rgba(0,255,65,0.3);
-  }
-
-  .features-grid {
+  .packet-strip {
+    width: min(760px, 100%);
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    border: 1px solid var(--line-soft);
+    background: var(--line-soft);
+    margin: 0.3rem 0 0.5rem;
   }
 
-  .feature-card {
-    border: 1px solid var(--border);
-    padding: 2rem;
-    background: var(--panel);
-    position: relative;
-    transition: all 0.3s;
-    overflow: hidden;
-  }
-  .feature-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 3px;
-    height: 0;
-    background: var(--red);
-    transition: height 0.3s;
-  }
-  .feature-card:hover { border-color: var(--red); transform: translateY(-4px); }
-  .feature-card:hover::before { height: 100%; }
-
-  .feature-icon {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-  }
-  .feature-name {
-    font-family: 'Orbitron', monospace;
-    font-size: 0.9rem;
-    color: var(--red);
-    margin-bottom: 0.5rem;
-    letter-spacing: 0.1em;
-  }
-  .feature-desc {
-    font-size: 0.8rem;
-    color: var(--muted);
-    line-height: 1.7;
-  }
-  .feature-badge {
-    display: inline-block;
-    margin-top: 1rem;
-    padding: 0.2rem 0.7rem;
-    border: 1px solid var(--border);
-    font-size: 0.65rem;
-    color: var(--green);
-    letter-spacing: 0.1em;
+  .packet {
+    min-height: 54px;
+    display: grid;
+    align-content: center;
+    gap: 0.28rem;
+    background: rgba(2, 12, 8, 0.72);
+    color: rgba(216,248,233,0.66);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
-  /* HOW IT WORKS */
-  .steps {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    position: relative;
-    max-width: 700px;
-    margin: 0 auto;
-  }
-  .steps::before {
-    content: '';
-    position: absolute;
-    left: 2rem;
-    top: 0; bottom: 0;
-    width: 1px;
-    background: linear-gradient(to bottom, var(--red), var(--green));
-  }
-
-  .step {
-    display: flex;
-    gap: 2rem;
-    padding: 2rem 2rem 2rem 0;
-    position: relative;
-  }
-
-  .step-num {
-    width: 4rem;
-    height: 4rem;
-    min-width: 4rem;
-    border: 1px solid var(--red);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Orbitron', monospace;
-    font-weight: 700;
-    color: var(--red);
-    font-size: 1rem;
-    background: var(--dark);
-    position: relative;
-    z-index: 1;
-    box-shadow: 0 0 20px rgba(255,0,51,0.3);
-  }
-
-  .step-content { padding-top: 0.5rem; }
-  .step-title {
-    font-family: 'Orbitron', monospace;
-    font-size: 0.9rem;
+  .packet span {
     color: var(--green);
-    margin-bottom: 0.5rem;
-  }
-  .step-desc {
-    font-size: 0.8rem;
-    color: var(--muted);
-    line-height: 1.7;
+    font-family: "Rajdhani", sans-serif;
+    font-size: 1.08rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
   }
 
-  /* TERMINAL DEMO */
-  .terminal {
-    background: #000;
-    border: 1px solid var(--border);
-    border-radius: 0;
-    max-width: 750px;
-    margin: 0 auto;
-    overflow: hidden;
-  }
-  .terminal-bar {
-    background: var(--dim);
-    padding: 0.7rem 1rem;
+  .actions {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-bottom: 1px solid var(--border);
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.9rem;
   }
-  .t-dot {
-    width: 10px; height: 10px;
+
+  .btn {
+    min-width: 190px;
+    padding: 0.9rem 1.3rem;
+    border: 1px solid var(--line);
+    background: rgba(2, 12, 8, 0.7);
+    color: var(--text);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .btn.primary {
+    background: linear-gradient(180deg, rgba(45,255,145,0.22), rgba(45,255,145,0.08));
+    color: #effff6;
+    border-color: rgba(45,255,145,0.48);
+  }
+
+  .btn.secondary { color: rgba(216,248,233,0.72); }
+
+  .btn:hover {
+    transform: translateY(-2px);
+    border-color: var(--green);
+    box-shadow: 0 0 28px rgba(45,255,145,0.18), inset 0 0 22px rgba(45,255,145,0.045);
+    background: rgba(7, 32, 20, 0.82);
+  }
+
+  .radar {
+    position: absolute;
+    width: min(58vw, 680px);
+    aspect-ratio: 1;
+    border: 1px solid rgba(45,255,145,0.12);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: -1;
+    opacity: 0.56;
+  }
+
+  .radar::before,
+  .radar::after {
+    content: "";
+    position: absolute;
+    inset: 17%;
+    border: 1px solid rgba(45,255,145,0.1);
     border-radius: 50%;
   }
-  .t-red { background: #ff5f56; }
-  .t-yellow { background: #ffbd2e; }
-  .t-green { background: #27c93f; }
-  .terminal-title {
-    flex: 1;
-    text-align: center;
-    font-size: 0.75rem;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-  .terminal-body {
-    padding: 1.5rem;
-    font-size: 0.82rem;
-    line-height: 2;
-    min-height: 280px;
-  }
-  .t-prompt { color: var(--red); }
-  .t-cmd    { color: var(--green); }
-  .t-info   { color: #6a9a6a; }
-  .t-crit   { color: var(--red); font-weight: bold; }
-  .t-high   { color: #ff8800; }
-  .t-med    { color: #ffff00; }
-  .t-ok     { color: var(--green); }
-  .t-cursor {
-    display: inline-block;
-    width: 8px; height: 14px;
-    background: var(--green);
-    animation: blink 1s infinite;
-    vertical-align: middle;
-  }
-  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
 
-  /* FOOTER */
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 2rem 3rem;
+  .radar::after {
+    inset: 33%;
+    background: conic-gradient(from 0deg, rgba(45,255,145,0.18), transparent 19%, transparent 100%);
+    animation: sweep 7s linear infinite;
+    mask-image: radial-gradient(circle, transparent 0 18%, black 19% 100%);
+  }
+
+  @keyframes sweep {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .terminal-ghost {
+    position: absolute;
+    left: clamp(1rem, 5vw, 5rem);
+    bottom: clamp(1rem, 5vh, 3rem);
+    width: min(420px, calc(100% - 2rem));
+    border-left: 1px solid rgba(45,255,145,0.25);
+    padding-left: 1rem;
+    color: rgba(131,255,192,0.38);
+    font-size: 0.68rem;
+    line-height: 1.7;
+    text-align: left;
+  }
+
+  .terminal-ghost span { color: rgba(255,59,79,0.55); }
+
+  .below-fold {
+    margin-top: -2rem;
+    padding: 0 clamp(1.25rem, 4vw, 4rem) 5rem;
+    position: relative;
+  }
+
+  .intel-panel {
+    width: min(1120px, 100%);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 1px;
+    border: 1px solid var(--line-soft);
+    background: var(--line-soft);
+  }
+
+  .intel-copy,
+  .trace-panel {
+    background: var(--panel);
+    backdrop-filter: blur(14px);
+    padding: clamp(1.2rem, 3vw, 2.2rem);
+  }
+
+  .intel-copy h2 {
+    font-family: "Rajdhani", sans-serif;
+    font-size: clamp(1.35rem, 3vw, 2.4rem);
+    color: #effff6;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.7rem;
+  }
+
+  .intel-copy p {
+    color: rgba(216,248,233,0.64);
+    font-size: 0.86rem;
+    line-height: 1.8;
+  }
+
+  .trace-line {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
     gap: 1rem;
-  }
-  .footer-logo {
-    font-family: 'Orbitron', monospace;
-    font-size: 0.9rem;
-    color: var(--red);
-    text-shadow: 0 0 10px rgba(255,0,51,0.5);
-  }
-  .footer-text {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid rgba(45,255,145,0.08);
     font-size: 0.7rem;
     color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-  .footer-disclaimer {
-    width: 100%;
-    text-align: center;
-    font-size: 0.65rem;
-    color: #2a3a2a;
-    letter-spacing: 0.1em;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #0a1a0a;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
-  /* SCROLL REVEAL */
-  .reveal {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: all 0.7s ease;
-  }
-  .reveal.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  .trace-line:last-child { border-bottom: 0; }
+  .trace-line strong { color: var(--green-soft); font-weight: 500; }
+  .trace-line .alert { color: var(--red); }
 
-  @media (max-width: 600px) {
-    nav { padding: 1rem; }
+  @media (max-width: 820px) {
+    .nav { grid-template-columns: 1fr auto; }
     .nav-links { display: none; }
-    .section { padding: 4rem 1.5rem; }
+    .nav-state { font-size: 0.58rem; }
+    .hero { padding-top: 6rem; }
+    .hero-inner::before, .hero-inner::after { display: none; }
+    .hero h1 { letter-spacing: 0.04em; }
+    .packet-strip { grid-template-columns: 1fr 1fr; }
+    .radar { width: 86vw; }
+    .terminal-ghost { position: relative; left: auto; bottom: auto; margin-top: 1.5rem; }
+    .intel-panel { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 520px) {
+    .packet-strip { grid-template-columns: 1fr; }
+    .btn { width: 100%; }
   }
 </style>
 </head>
 <body>
+<main class="page">
+  <canvas class="signal-canvas" id="signalCanvas" aria-hidden="true"></canvas>
 
-<!-- NAV -->
-<nav>
-  <div class="nav-logo">REBEL PROTOCOL</div>
-  <div class="nav-links">
-    <a href="#features">Features</a>
-    <a href="#how">How It Works</a>
-    <a href="#demo">Demo</a>
-  </div>
-  <a href="/scanner" class="nav-btn">Launch Scanner</a>
-</nav>
+  <nav class="nav">
+    <div class="nav-mark">Research Node</div>
+    <div class="nav-links">
+      <a href="#surface">Surface</a>
+      <a href="/scanner">Console</a>
+      <a href="#telemetry">Telemetry</a>
+    </div>
+    <div class="nav-state">Live Analysis / Passive Mode</div>
+  </nav>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-grid"></div>
-  <p class="hero-subtitle">// Automated Web Vulnerability Detection System</p>
-  <div class="glitch-wrapper">
-    <h1 class="hero-title" data-text="REBEL PROTOCOL">REBEL PROTOCOL</h1>
-  </div>
-  <p class="hero-desc">
-    A next-generation security scanner that hunts
-    <span>SQL Injection</span>, <span>XSS</span>, <span>CSRF</span>,
-    misconfigured headers, and exposed files —
-    before the attackers do.
-  </p>
-  <div class="hero-btns">
-    <a href="/scanner" class="btn-primary">Launch Scanner</a>
-    <a href="https://github.com/Zeminem-hub/rebel-protocol-AWVDS" target="_blank" class="btn-secondary">View on GitHub</a>
-  </div>
-  <div class="stats-bar">
-    <div class="stat">
-      <div class="stat-num">5+</div>
-      <div class="stat-label">Scan Modules</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num">50+</div>
-      <div class="stat-label">Payloads</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num">100%</div>
-      <div class="stat-label">Open Source</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num">v1.0</div>
-      <div class="stat-label">Version</div>
-    </div>
-  </div>
-</section>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="radar" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <div class="eyebrow">Red Team Research Interface</div>
+      <h1 id="hero-title">Attack Vector Detection</h1>
+      <p class="hero-copy">
+        Autonomous reconnaissance and vulnerability testing for authorized operators.
+        Crawl targets, enumerate exposed input surfaces, and correlate <strong>injection,
+        header, CSRF, and file exposure signals</strong> in one controlled workflow.
+      </p>
 
-<!-- FEATURES -->
-<section class="section" id="features">
-  <div class="section-header reveal">
-    <p class="section-tag">// Capabilities</p>
-    <h2 class="section-title">What It Detects</h2>
-  </div>
-  <div class="features-grid">
-    <div class="feature-card reveal">
-      <div class="feature-icon">💉</div>
-      <div class="feature-name">SQL Injection</div>
-      <div class="feature-desc">Detects error-based and time-based blind SQL injection across all forms and URL parameters automatically.</div>
-      <span class="feature-badge">CRITICAL</span>
-    </div>
-    <div class="feature-card reveal">
-      <div class="feature-icon">📜</div>
-      <div class="feature-name">Cross-Site Scripting</div>
-      <div class="feature-desc">Tests reflected XSS by injecting payloads into every input and checking if they appear unescaped in the response.</div>
-      <span class="feature-badge">HIGH</span>
-    </div>
-    <div class="feature-card reveal">
-      <div class="feature-icon">🛡️</div>
-      <div class="feature-name">Security Headers</div>
-      <div class="feature-desc">Checks for missing CSP, HSTS, X-Frame-Options, and other critical HTTP security headers.</div>
-      <span class="feature-badge">MEDIUM</span>
-    </div>
-    <div class="feature-card reveal">
-      <div class="feature-icon">📂</div>
-      <div class="feature-name">Sensitive Files</div>
-      <div class="feature-desc">Probes for exposed .env, .git, backup files, admin panels, and configuration files.</div>
-      <span class="feature-badge">CRITICAL</span>
-    </div>
-    <div class="feature-card reveal">
-      <div class="feature-icon">🔁</div>
-      <div class="feature-name">CSRF Detection</div>
-      <div class="feature-desc">Identifies POST forms missing anti-CSRF tokens that could allow cross-site request forgery attacks.</div>
-      <span class="feature-badge">MEDIUM</span>
-    </div>
-    <div class="feature-card reveal">
-      <div class="feature-icon">🕷️</div>
-      <div class="feature-name">Smart Crawler</div>
-      <div class="feature-desc">Automatically maps the entire website — finds all pages, forms, and input points before scanning begins.</div>
-      <span class="feature-badge">ENGINE</span>
-    </div>
-  </div>
-</section>
-
-<!-- HOW IT WORKS -->
-<section class="section" id="how" style="background: var(--panel); max-width:100%; padding: 6rem 3rem;">
-  <div style="max-width:1200px; margin:0 auto;">
-    <div class="section-header reveal">
-      <p class="section-tag">// Process</p>
-      <h2 class="section-title">How It Works</h2>
-    </div>
-    <div class="steps">
-      <div class="step reveal">
-        <div class="step-num">01</div>
-        <div class="step-content">
-          <div class="step-title">Target Input</div>
-          <div class="step-desc">Enter the target URL. Rebel Protocol accepts any http or https web address and optional scan depth settings.</div>
-        </div>
+      <div class="packet-strip" aria-label="Security platform metrics">
+        <div class="packet"><span>06</span>Modules Active</div>
+        <div class="packet"><span>128</span>Payload Signatures</div>
+        <div class="packet"><span>42 ms</span>Response Time</div>
+        <div class="packet"><span>97.8%</span>Detection Accuracy</div>
       </div>
-      <div class="step reveal">
-        <div class="step-num">02</div>
-        <div class="step-content">
-          <div class="step-title">Crawl & Map</div>
-          <div class="step-desc">The crawler visits every page, follows links, and extracts all forms, input fields, and URL parameters.</div>
-        </div>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">03</div>
-        <div class="step-content">
-          <div class="step-title">Inject & Test</div>
-          <div class="step-desc">50+ attack payloads are injected into each discovered input. Server responses are analyzed for vulnerability signatures.</div>
-        </div>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">04</div>
-        <div class="step-content">
-          <div class="step-title">Report Generation</div>
-          <div class="step-desc">All findings are sorted by severity — CRITICAL to LOW — and presented in a structured, actionable report.</div>
-        </div>
+
+      <div class="actions">
+        <a class="btn primary" href="/scanner">Initialize Scan</a>
+        <a class="btn secondary" href="https://github.com/Zeminem-hub/rebel-protocol-AWVDS" target="_blank" rel="noreferrer">Access Repository</a>
       </div>
     </div>
-  </div>
-</section>
 
-<!-- TERMINAL DEMO -->
-<section class="section" id="demo">
-  <div class="section-header reveal">
-    <p class="section-tag">// Live Preview</p>
-    <h2 class="section-title">See It In Action</h2>
-  </div>
-  <div class="terminal reveal">
-    <div class="terminal-bar">
-      <div class="t-dot t-red"></div>
-      <div class="t-dot t-yellow"></div>
-      <div class="t-dot t-green"></div>
-      <div class="terminal-title">rebel-protocol — cmd</div>
+    <div class="terminal-ghost" aria-hidden="true">
+      <div><span>operator@node-07</span>:~$ surface.map --mode authorized</div>
+      <div>handshake: tls observed / forms indexed / entropy stable</div>
+      <div>packet.trace: ingress 443 / probe window 00:04:21</div>
+      <div>signal: waiting for target acquisition</div>
     </div>
-    <div class="terminal-body" id="termOutput">
-      <span class="t-prompt">D:\PROJECT\avwds&gt; </span><span class="t-cmd" id="typeText"></span><br/>
-    </div>
-  </div>
-</section>
+  </section>
 
-<!-- FOOTER -->
-<footer>
-  <div class="footer-logo">REBEL PROTOCOL</div>
-  <div class="footer-text">AVWDS v1.0 — Built by Mohammad Zeeshan</div>
-  <a href="/scanner" class="nav-btn">Launch Scanner →</a>
-  <div class="footer-disclaimer">
-    ⚠ FOR EDUCATIONAL AND AUTHORIZED TESTING ONLY. NEVER SCAN SYSTEMS WITHOUT PERMISSION.
-  </div>
-</footer>
+  <section class="below-fold" id="surface">
+    <div class="intel-panel" id="telemetry">
+      <div class="intel-copy">
+        <h2>Controlled Offensive Telemetry</h2>
+        <p>
+          Built for researchers and red teams who need a disciplined interface for mapping
+          application attack surfaces. The system keeps the visual language quiet, focused,
+          and operational: signal first, spectacle last.
+        </p>
+      </div>
+      <div class="trace-panel" aria-label="Current trace state">
+        <div class="trace-line"><span>Input Vectors</span><strong>Enumerated</strong></div>
+        <div class="trace-line"><span>Payload Engine</span><strong>Armed</strong></div>
+        <div class="trace-line"><span>Header Review</span><strong>Standby</strong></div>
+        <div class="trace-line"><span>Risk Channel</span><strong class="alert">Elevated</strong></div>
+      </div>
+    </div>
+  </section>
+</main>
 
 <script>
-// Scroll reveal
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
-}, { threshold: 0.1 });
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+const canvas = document.getElementById("signalCanvas");
+const ctx = canvas.getContext("2d");
+const state = { width: 0, height: 0, points: [] };
 
-// Terminal typing animation
-const lines = [
-  { text: "python main.py --url http://testphp.vulnweb.com", delay: 50, pause: 800 },
-  { text: "\n", pause: 200 },
-  { text: "  [ Initializing Rebel Protocol... System Online ]\n", cls: "t-ok", pause: 400 },
-  { text: "[*] Phase 1: Crawling target website...\n", cls: "t-info", pause: 300 },
-  { text: "[*] Found 8 testable endpoints\n", cls: "t-info", pause: 300 },
-  { text: "[*] Phase 2: Running vulnerability scans...\n", cls: "t-info", pause: 500 },
-  { text: "[CRITICAL] SQL Injection found! → /search.php?q=1\n", cls: "t-crit", pause: 300 },
-  { text: "[HIGH]     Reflected XSS → /comment.php\n", cls: "t-high", pause: 300 },
-  { text: "[CRITICAL] Sensitive file exposed → /.env\n", cls: "t-crit", pause: 300 },
-  { text: "[MEDIUM]   Missing Header: Content-Security-Policy\n", cls: "t-med", pause: 300 },
-  { text: "[+] Report saved → report.json  |  Total: 4 issues\n", cls: "t-ok", pause: 0 },
-];
-
-let output = document.getElementById('termOutput');
-let cmdText = document.getElementById('typeText');
-
-async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-async function runTerminal() {
-  // Type the command
-  const cmd = lines[0].text;
-  for (let ch of cmd) {
-    cmdText.textContent += ch;
-    await sleep(lines[0].delay);
-  }
-  await sleep(lines[0].pause);
-
-  // Add remaining lines
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    const span = document.createElement('span');
-    if (line.cls) span.className = line.cls;
-    span.textContent = line.text;
-    output.appendChild(span);
-    await sleep(line.pause);
-  }
-
-  // Blinking cursor at end
-  const cursor = document.createElement('span');
-  cursor.className = 't-cursor';
-  output.appendChild(cursor);
+function resize() {
+  const ratio = window.devicePixelRatio || 1;
+  state.width = canvas.offsetWidth;
+  state.height = canvas.offsetHeight;
+  canvas.width = state.width * ratio;
+  canvas.height = state.height * ratio;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  state.points = Array.from({ length: Math.min(54, Math.floor(state.width / 22)) }, () => ({
+    x: Math.random() * state.width,
+    y: Math.random() * state.height,
+    vx: (Math.random() - 0.5) * 0.22,
+    vy: (Math.random() - 0.5) * 0.22,
+    label: ["SYN", "ACK", "TLS", "POST", "302", "JWT", "CSP", "SQL"][Math.floor(Math.random() * 8)]
+  }));
 }
 
-// Start after a short delay
-setTimeout(runTerminal, 1000);
+function draw() {
+  ctx.clearRect(0, 0, state.width, state.height);
+  ctx.font = "10px IBM Plex Mono";
+  ctx.textAlign = "center";
+
+  for (const p of state.points) {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < 0 || p.x > state.width) p.vx *= -1;
+    if (p.y < 0 || p.y > state.height) p.vy *= -1;
+
+    ctx.fillStyle = "rgba(131,255,192,0.26)";
+    ctx.fillText(p.label, p.x, p.y - 8);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(45,255,145,0.48)";
+    ctx.fill();
+  }
+
+  for (let i = 0; i < state.points.length; i++) {
+    for (let j = i + 1; j < state.points.length; j++) {
+      const a = state.points[i];
+      const b = state.points[j];
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < 165) {
+        ctx.strokeStyle = `rgba(45,255,145,${0.12 * (1 - distance / 165)})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener("resize", resize);
+resize();
+draw();
 </script>
 </body>
 </html>

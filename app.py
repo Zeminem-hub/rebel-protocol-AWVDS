@@ -22,13 +22,14 @@ def scanner():
 
 @app.route("/scan", methods=["POST"])
 def scan():
-    data = request.json
+    data = request.json or {}
     target_url = data.get("url", "")
-    depth      = int(data.get("depth", 2))
+    depth      = max(1, min(int(data.get("depth", 2)), 3))
     no_sqli    = data.get("no_sqli", False)
     no_xss     = data.get("no_xss", False)
     no_headers = data.get("no_headers", False)
     no_files   = data.get("no_files", False)
+    max_endpoints = max(1, min(int(data.get("max_endpoints", 20)), 40))
 
     if not target_url.startswith(("http://", "https://")):
         return jsonify({"error": "Invalid URL. Must start with http:// or https://"}), 400
@@ -45,8 +46,17 @@ def scan():
 
             async def do_scan():
                 findings = []
-                crawler  = Crawler(target_url, depth=depth)
-                endpoints = await crawler.start()
+                diagnostics = []
+                crawler  = Crawler(
+                    target_url,
+                    depth=depth,
+                    timeout=6,
+                    max_pages=12 if depth == 1 else 24 if depth == 2 else 35,
+                    max_endpoints=max_endpoints
+                )
+                endpoints = await asyncio.wait_for(crawler.start(), timeout=25)
+                diagnostics.extend(crawler.errors[:5])
+                endpoints = endpoints[:max_endpoints]
 
                 for ep in endpoints:
                     if not no_sqli:
@@ -66,18 +76,25 @@ def scan():
                     s = SensitiveFileScanner()
                     findings.extend(await s.scan(target_url))
 
-                return findings, len(endpoints)
+                return findings, len(endpoints), diagnostics
 
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            findings, ep_count = loop.run_until_complete(do_scan())
+            findings, ep_count, diagnostics = loop.run_until_complete(
+                asyncio.wait_for(do_scan(), timeout=90)
+            )
             loop.close()
-            return findings, ep_count
+            return findings, ep_count, diagnostics, None
 
+        except asyncio.TimeoutError:
+            return [], 0, [], "Scan timed out. Try depth 1, reduce modules, or verify the target is reachable."
         except Exception as e:
-            return [], 0
+            return [], 0, [], f"{type(e).__name__}: {e}"
 
-    findings, ep_count = run()
+    findings, ep_count, diagnostics, scan_error = run()
+
+    if scan_error:
+        return jsonify({"error": scan_error}), 504
 
     severity_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
     findings.sort(key=lambda x: severity_rank.get(x.get("severity", "INFO"), 4))
@@ -93,7 +110,8 @@ def scan():
         "endpoints": ep_count,
         "total":     len(findings),
         "summary":   summary,
-        "findings":  findings
+        "findings":  findings,
+        "diagnostics": diagnostics
     })
 
 

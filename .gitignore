@@ -1,4 +1,8 @@
  venv/
+.venv/
+.codex_python/
+.tmp/
+server.*.log
 __pycache__/
 *.pyc
 *.pyo

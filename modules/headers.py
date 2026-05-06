@@ -21,7 +21,7 @@ class HeadersScanner:
     async def scan(self, url):
         info(f"Checking security headers for: {url}")
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=6, follow_redirects=True) as client:
                 response = await client.get(url)
                 headers = response.headers
 
