@@ -170,7 +170,8 @@
   label span { color: var(--red); }
 
   input[type="text"],
-  select {
+  select,
+  textarea {
     width: 100%;
     min-height: 44px;
     border: 1px solid var(--line-soft);
@@ -179,14 +180,19 @@
     padding: 0.75rem 0.85rem;
     outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    resize: vertical;
   }
 
   input[type="text"]:focus,
-  select:focus {
+  select:focus,
+  textarea:focus {
     border-color: rgba(45,255,145,0.55);
     box-shadow: 0 0 20px rgba(45,255,145,0.09);
   }
 
+  textarea { min-height: 60px; line-height: 1.5; }
   select option { background: #020604; }
 
   .toggle-grid {
@@ -221,6 +227,13 @@
     padding: 0.85rem;
     font-size: 0.68rem;
     line-height: 1.65;
+  }
+
+  .cookie-hint {
+    margin-top: 0.45rem;
+    color: rgba(120,150,134,0.7);
+    font-size: 0.63rem;
+    line-height: 1.55;
   }
 
   .error-msg {
@@ -294,13 +307,10 @@
   }
 
   .status-dot.done { background: var(--green); box-shadow: 0 0 14px rgba(45,255,145,0.7); }
-  .status-dot.err { background: var(--red); box-shadow: 0 0 14px rgba(255,59,79,0.7); }
+  .status-dot.err  { background: var(--red);   box-shadow: 0 0 14px rgba(255,59,79,0.7); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.32} }
 
-  .ep-count {
-    margin-left: auto;
-    color: rgba(216,248,233,0.58);
-  }
+  .ep-count { margin-left: auto; color: rgba(216,248,233,0.58); }
 
   .summary-bar {
     display: grid;
@@ -322,16 +332,11 @@
     font-weight: 700;
     line-height: 1;
   }
-  .scard-label {
-    color: var(--muted);
-    font-size: 0.62rem;
-    letter-spacing: 0.16em;
-    margin-top: 0.35rem;
-  }
+  .scard-label { color: var(--muted); font-size: 0.62rem; letter-spacing: 0.16em; margin-top: 0.35rem; }
   .critical .scard-num { color: var(--red); }
-  .high .scard-num { color: var(--amber); }
-  .medium .scard-num { color: var(--green-soft); }
-  .low .scard-num { color: var(--blue); }
+  .high     .scard-num { color: var(--amber); }
+  .medium   .scard-num { color: var(--green-soft); }
+  .low      .scard-num { color: var(--blue); }
 
   .results-area {
     min-height: 0;
@@ -365,12 +370,7 @@
     margin-bottom: 0.65rem;
   }
 
-  .phase-list {
-    display: grid;
-    gap: 0.7rem;
-    margin-top: 1.4rem;
-    text-align: left;
-  }
+  .phase-list { display: grid; gap: 0.7rem; margin-top: 1.4rem; text-align: left; }
 
   .phase {
     display: flex;
@@ -384,8 +384,8 @@
     text-transform: uppercase;
   }
 
-  .phase.active strong { color: var(--green); }
-  .phase.done strong { color: var(--green-soft); }
+  .phase.active  strong { color: var(--green); }
+  .phase.done    strong { color: var(--green-soft); }
   .phase.pending strong { color: rgba(216,248,233,0.36); }
 
   .finding {
@@ -395,7 +395,7 @@
     animation: reveal 0.25s ease;
   }
 
-  @keyframes reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes reveal { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
   .finding-header {
     display: flex;
@@ -416,35 +416,19 @@
     letter-spacing: 0.12em;
   }
 
-  .sev-CRITICAL { color: var(--red); background: rgba(255,59,79,0.08); }
-  .sev-HIGH { color: var(--amber); background: rgba(245,184,75,0.08); }
-  .sev-MEDIUM { color: var(--green-soft); background: rgba(45,255,145,0.07); }
-  .sev-LOW { color: var(--blue); background: rgba(92,183,255,0.07); }
+  .sev-CRITICAL { color: var(--red);        background: rgba(255,59,79,0.08); }
+  .sev-HIGH     { color: var(--amber);      background: rgba(245,184,75,0.08); }
+  .sev-MEDIUM   { color: var(--green-soft); background: rgba(45,255,145,0.07); }
+  .sev-LOW      { color: var(--blue);       background: rgba(92,183,255,0.07); }
+  .sev-INFO     { color: var(--muted);      background: rgba(120,150,134,0.07); }
 
-  .finding-type {
-    flex: 1;
-    color: rgba(216,248,233,0.86);
-    font-size: 0.82rem;
-  }
-
+  .finding-type  { flex: 1; color: rgba(216,248,233,0.86); font-size: 0.82rem; }
   .finding-toggle { color: var(--muted); }
 
-  .finding-body {
-    display: none;
-    border-top: 1px solid var(--line-soft);
-    padding: 1rem;
-    font-size: 0.76rem;
-  }
-
+  .finding-body { display: none; border-top: 1px solid var(--line-soft); padding: 1rem; font-size: 0.76rem; }
   .finding-body.open { display: block; }
 
-  .finding-row {
-    display: grid;
-    grid-template-columns: 110px 1fr;
-    gap: 0.9rem;
-    padding: 0.35rem 0;
-  }
-
+  .finding-row { display: grid; grid-template-columns: 110px 1fr; gap: 0.9rem; padding: 0.35rem 0; }
   .finding-key { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
   .finding-val { color: var(--green-soft); word-break: break-word; }
 
@@ -458,9 +442,9 @@
     line-height: 1.75;
   }
 
-  .log-line { color: rgba(120,150,134,0.88); }
+  .log-line       { color: rgba(120,150,134,0.88); }
   .log-line.active { color: var(--green-soft); }
-  .log-line.err { color: var(--red); }
+  .log-line.err   { color: var(--red); }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: #010403; }
@@ -502,6 +486,7 @@
       </div>
 
       <div class="scan-form">
+
         <div class="form-group">
           <label for="targetUrl">Target URL <span>*</span></label>
           <input type="text" id="targetUrl" placeholder="https://example.com" autocomplete="off"/>
@@ -510,28 +495,28 @@
         <div class="form-group">
           <label for="depth">Crawl Depth</label>
           <select id="depth">
-            <option value="1">1 - Shallow / fastest</option>
-            <option value="2" selected>2 - Standard / recommended</option>
-            <option value="3">3 - Expanded / slower</option>
+            <option value="1">1 — Shallow / fastest</option>
+            <option value="2" selected>2 — Standard / recommended</option>
+            <option value="3">3 — Expanded / slower</option>
           </select>
         </div>
 
+        <!-- ── COOKIES FIELD (new) ─────────────────────────── -->
         <div class="form-group">
-          <label for="maxEndpoints">Endpoint Budget</label>
-          <select id="maxEndpoints">
-            <option value="10">10 endpoints / quick validation</option>
-            <option value="20" selected>20 endpoints / balanced</option>
-            <option value="40">40 endpoints / extended</option>
-          </select>
+          <label for="cookiesInput">Session Cookies <span style="color:var(--muted)">(optional)</span></label>
+          <textarea id="cookiesInput" rows="2" placeholder="PHPSESSID=abc123; security=low"></textarea>
+          <div class="cookie-hint">Required for authenticated targets like DVWA. Copy from browser DevTools → Application → Cookies.</div>
         </div>
 
         <div class="form-group">
           <label>Modules Active</label>
           <div class="toggle-grid">
-            <label class="toggle-item"><input type="checkbox" id="sqli" checked> SQLi</label>
-            <label class="toggle-item"><input type="checkbox" id="xss" checked> XSS</label>
-            <label class="toggle-item"><input type="checkbox" id="headers" checked> Headers</label>
-            <label class="toggle-item"><input type="checkbox" id="files" checked> Files</label>
+            <label class="toggle-item"><input type="checkbox" id="sqli"      checked> SQLi</label>
+            <label class="toggle-item"><input type="checkbox" id="xss"       checked> XSS</label>
+            <label class="toggle-item"><input type="checkbox" id="headers"   checked> Headers</label>
+            <label class="toggle-item"><input type="checkbox" id="files"     checked> Files</label>
+            <label class="toggle-item"><input type="checkbox" id="csrf"      checked> CSRF</label>
+            <label class="toggle-item"><input type="checkbox" id="injection" checked> CMDi/LFI</label>
           </div>
         </div>
 
@@ -541,7 +526,7 @@
 
         <div class="notice">
           This scanner sends real HTTP probes to the target. Use only on authorized systems.
-          Slow or protected targets may produce timeouts, blocks, or incomplete findings.
+          Slow or protected targets may produce timeouts or incomplete findings.
         </div>
       </div>
     </aside>
@@ -549,15 +534,15 @@
     <section class="results">
       <div class="status-bar">
         <div class="status-dot" id="statusDot"></div>
-        <div id="statusText">Ready - target required</div>
+        <div id="statusText">Ready — target required</div>
         <div class="ep-count" id="epCount"></div>
       </div>
 
       <div class="summary-bar">
         <div class="scard critical"><div class="scard-num" id="cCrit">0</div><div class="scard-label">Critical</div></div>
-        <div class="scard high"><div class="scard-num" id="cHigh">0</div><div class="scard-label">High</div></div>
-        <div class="scard medium"><div class="scard-num" id="cMed">0</div><div class="scard-label">Medium</div></div>
-        <div class="scard low"><div class="scard-num" id="cLow">0</div><div class="scard-label">Low</div></div>
+        <div class="scard high">   <div class="scard-num" id="cHigh">0</div><div class="scard-label">High</div></div>
+        <div class="scard medium"> <div class="scard-num" id="cMed">0</div> <div class="scard-label">Medium</div></div>
+        <div class="scard low">    <div class="scard-num" id="cLow">0</div> <div class="scard-label">Low</div></div>
       </div>
 
       <div class="results-area" id="resultsArea">
@@ -566,10 +551,10 @@
             <h2>Awaiting Target</h2>
             <p>Enter a URL, select modules, and initialize a scan.</p>
             <div class="phase-list" id="phaseList">
-              <div class="phase pending" data-phase="crawler"><span>Crawler</span><strong>Standby</strong></div>
+              <div class="phase pending" data-phase="crawler"> <span>Crawler</span>       <strong>Standby</strong></div>
               <div class="phase pending" data-phase="payloads"><span>Payload Engine</span><strong>Standby</strong></div>
-              <div class="phase pending" data-phase="posture"><span>Posture Checks</span><strong>Standby</strong></div>
-              <div class="phase pending" data-phase="report"><span>Report</span><strong>Standby</strong></div>
+              <div class="phase pending" data-phase="posture"> <span>Posture Checks</span><strong>Standby</strong></div>
+              <div class="phase pending" data-phase="report">  <span>Report</span>        <strong>Standby</strong></div>
             </div>
           </div>
         </div>
@@ -584,12 +569,11 @@
 
 <script>
 let scanRunning = false;
-let progressTimer = null;
 
 function log(msg, type = "") {
   const panel = document.getElementById("logPanel");
-  const line = document.createElement("div");
-  line.className = "log-line " + type;
+  const line  = document.createElement("div");
+  line.className  = "log-line " + type;
   line.textContent = msg;
   panel.appendChild(line);
   panel.scrollTop = panel.scrollHeight;
@@ -597,44 +581,42 @@ function log(msg, type = "") {
 
 function setStatus(text, state = "") {
   document.getElementById("statusText").textContent = text;
-  document.getElementById("statusDot").className = "status-dot " + state;
+  document.getElementById("statusDot").className    = "status-dot " + state;
 }
 
 function showError(msg) {
   const el = document.getElementById("errorMsg");
-  el.textContent = msg;
+  el.textContent   = msg;
   el.style.display = "block";
 }
 
-function hideError() {
-  document.getElementById("errorMsg").style.display = "none";
-}
+function hideError() { document.getElementById("errorMsg").style.display = "none"; }
 
-function updateSummary(summary) {
-  document.getElementById("cCrit").textContent = summary.CRITICAL || 0;
-  document.getElementById("cHigh").textContent = summary.HIGH || 0;
-  document.getElementById("cMed").textContent = summary.MEDIUM || 0;
-  document.getElementById("cLow").textContent = summary.LOW || 0;
+function updateSummary(s) {
+  document.getElementById("cCrit").textContent = s.CRITICAL || 0;
+  document.getElementById("cHigh").textContent = s.HIGH     || 0;
+  document.getElementById("cMed") .textContent = s.MEDIUM   || 0;
+  document.getElementById("cLow") .textContent = s.LOW      || 0;
 }
 
 function renderPhases(activePhase) {
   const phases = [
-    ["crawler", "Crawler"],
+    ["crawler",  "Crawler"],
     ["payloads", "Payload Engine"],
-    ["posture", "Posture Checks"],
-    ["report", "Report"]
+    ["posture",  "Posture Checks"],
+    ["report",   "Report"]
   ];
-  const order = phases.map(([key]) => key);
+  const order       = phases.map(([k]) => k);
   const activeIndex = order.indexOf(activePhase);
-  return `
-    <div class="phase-list" id="phaseList">
-      ${phases.map(([key, label], index) => {
-        const state = activePhase === "idle" ? "pending" : index < activeIndex ? "done" : index === activeIndex ? "active" : "pending";
-        const text = state === "done" ? "Complete" : state === "active" ? "Running" : "Queued";
-        return `<div class="phase ${state}" data-phase="${key}"><span>${label}</span><strong>${text}</strong></div>`;
-      }).join("")}
-    </div>
-  `;
+  return `<div class="phase-list" id="phaseList">
+    ${phases.map(([key, label], i) => {
+      const state = activePhase === "idle" ? "pending"
+                  : i < activeIndex        ? "done"
+                  : i === activeIndex      ? "active" : "pending";
+      const text  = state === "done" ? "Complete" : state === "active" ? "Running" : "Queued";
+      return `<div class="phase ${state}" data-phase="${key}"><span>${label}</span><strong>${text}</strong></div>`;
+    }).join("")}
+  </div>`;
 }
 
 function setPhase(phase, detail) {
@@ -652,26 +634,25 @@ function setPhase(phase, detail) {
     const card = area.querySelector(".idle-card");
     if (card) {
       card.querySelector("#phaseList").outerHTML = renderPhases(phase);
-      const detailEl = card.querySelector("#phaseDetail");
-      if (detailEl) detailEl.textContent = detail || "";
+      const d = card.querySelector("#phaseDetail");
+      if (d) d.textContent = detail || "";
     }
   }
 }
 
 function startProgressSimulation(url) {
   const steps = [
-    { t: 0, phase: "crawler", status: "Crawling target surface", log: "[crawler] mapping pages, forms, and query parameters" },
-    { t: 5500, phase: "payloads", status: "Testing discovered inputs", log: "[payload] running SQLi, XSS, and CSRF probes" },
-    { t: 18000, phase: "posture", status: "Checking exposed files and headers", log: "[posture] evaluating headers and sensitive paths" },
-    { t: 30000, phase: "report", status: "Correlating findings", log: "[report] sorting evidence by severity" }
+    { t: 0,     phase: "crawler",  status: "Crawling target surface",        msg: "[crawler] mapping pages, forms, and parameters" },
+    { t: 5500,  phase: "payloads", status: "Testing discovered inputs",       msg: "[payload] running SQLi, XSS, CMDi, LFI probes" },
+    { t: 18000, phase: "posture",  status: "Checking headers and files",      msg: "[posture] evaluating headers and sensitive paths" },
+    { t: 30000, phase: "report",   status: "Correlating findings",            msg: "[report] sorting evidence by severity" },
   ];
-
   steps.forEach(step => {
     setTimeout(() => {
       if (!scanRunning) return;
       setPhase(step.phase, `${step.status}: ${url}`);
       setStatus(step.status, "scanning");
-      log(step.log, "active");
+      log(step.msg, "active");
     }, step.t);
   });
 }
@@ -686,71 +667,74 @@ function renderFinding(f, index) {
       <span class="finding-toggle" id="arrow-${index}">Open</span>
     </div>
     <div class="finding-body" id="body-${index}">
-      ${f.url ? row("URL", f.url) : ""}
-      ${f.parameter ? row("Parameter", f.parameter) : ""}
-      ${f.payload ? row("Payload", f.payload) : ""}
-      ${f.evidence ? row("Evidence", f.evidence) : ""}
-      ${f.description ? row("Details", f.description) : ""}
-    </div>
-  `;
+      ${f.url            ? row("URL",            f.url)            : ""}
+      ${f.parameter      ? row("Parameter",      f.parameter)      : ""}
+      ${f.method         ? row("Method",         f.method)         : ""}
+      ${f.payload        ? row("Payload",        f.payload)        : ""}
+      ${f.evidence       ? row("Evidence",       f.evidence)       : ""}
+      ${f.confidence     ? row("Confidence",     f.confidence+"%") : ""}
+      ${f.cwe            ? row("CWE",            f.cwe)            : ""}
+      ${f.recommendation ? row("Fix",            f.recommendation) : ""}
+    </div>`;
   return div;
 }
 
 function row(key, value) {
-  return `<div class="finding-row"><span class="finding-key">${escHtml(key)}</span><span class="finding-val">${escHtml(value)}</span></div>`;
+  return `<div class="finding-row">
+    <span class="finding-key">${escHtml(key)}</span>
+    <span class="finding-val">${escHtml(String(value))}</span>
+  </div>`;
 }
 
 function toggleFinding(index) {
-  const body = document.getElementById("body-" + index);
+  const body  = document.getElementById("body-"  + index);
   const arrow = document.getElementById("arrow-" + index);
-  const open = body.classList.toggle("open");
+  const open  = body.classList.toggle("open");
   arrow.textContent = open ? "Close" : "Open";
 }
 
 function escHtml(str) {
   return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-function escAttr(str) {
-  return String(str || "").replace(/[^A-Z]/g, "");
-}
+function escAttr(str) { return String(str||"").replace(/[^A-Z]/g,""); }
 
 async function startScan() {
   if (scanRunning) return;
 
-  const url = document.getElementById("targetUrl").value.trim();
-  const depth = parseInt(document.getElementById("depth").value, 10);
-  const maxEndpoints = parseInt(document.getElementById("maxEndpoints").value, 10);
-  const noSqli = !document.getElementById("sqli").checked;
-  const noXss = !document.getElementById("xss").checked;
-  const noHdr = !document.getElementById("headers").checked;
-  const noFiles = !document.getElementById("files").checked;
+  const url      = document.getElementById("targetUrl").value.trim();
+  const depth    = parseInt(document.getElementById("depth").value, 10);
+  const cookies  = document.getElementById("cookiesInput").value.trim();
+  const noSqli   = !document.getElementById("sqli")     .checked;
+  const noXss    = !document.getElementById("xss")      .checked;
+  const noHdr    = !document.getElementById("headers")  .checked;
+  const noFiles  = !document.getElementById("files")    .checked;
+  const noCsrf   = !document.getElementById("csrf")     .checked;
+  const noInject = !document.getElementById("injection").checked;
 
   hideError();
 
   if (!url) { showError("Please enter a target URL."); return; }
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    showError("URL must start with http:// or https://.");
-    return;
+    showError("URL must start with http:// or https://"); return;
   }
 
   scanRunning = true;
-  document.getElementById("scanBtn").disabled = true;
+  document.getElementById("scanBtn").disabled    = true;
   document.getElementById("scanBtn").textContent = "Scan Running";
   document.getElementById("resultsArea").innerHTML = "";
-  document.getElementById("logPanel").innerHTML = "";
-  document.getElementById("epCount").textContent = "";
-  updateSummary({ CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 });
+  document.getElementById("logPanel").innerHTML    = "";
+  document.getElementById("epCount").textContent   = "";
+  updateSummary({ CRITICAL:0, HIGH:0, MEDIUM:0, LOW:0 });
 
   setStatus("Crawling target surface", "scanning");
   setPhase("crawler", `Target: ${url}`);
   log("[scan] initialized");
   log("[target] " + url);
-  log("[budget] depth " + depth + " / " + maxEndpoints + " endpoints");
+  log("[depth] " + depth);
+  if (cookies) log("[cookies] session credentials loaded");
   startProgressSimulation(url);
 
   try {
@@ -760,11 +744,13 @@ async function startScan() {
       body: JSON.stringify({
         url,
         depth,
-        max_endpoints: maxEndpoints,
-        no_sqli: noSqli,
-        no_xss: noXss,
-        no_headers: noHdr,
-        no_files: noFiles
+        cookies,
+        no_sqli:      noSqli,
+        no_xss:       noXss,
+        no_headers:   noHdr,
+        no_files:     noFiles,
+        no_csrf:      noCsrf,
+        no_injection: noInject,
       })
     });
 
@@ -776,31 +762,31 @@ async function startScan() {
     updateSummary(data.summary);
     document.getElementById("epCount").textContent = `${data.endpoints} endpoints scanned`;
 
-    log(`[crawler] complete; ${data.endpoints} endpoints discovered`, "active");
-    if (data.diagnostics && data.diagnostics.length) {
-      data.diagnostics.forEach(item => log("[diagnostic] " + item, "err"));
-    }
+    log(`[crawler] ${data.endpoints} endpoints discovered`, "active");
+    if (data.diagnostics && data.diagnostics.length)
+      data.diagnostics.forEach(d => log("[diagnostic] " + d, "err"));
 
     const area = document.getElementById("resultsArea");
     area.innerHTML = "";
 
-    if (!data.findings.length) {
+    if (!data.findings || !data.findings.length) {
       area.innerHTML = `
         <div class="empty-state">
           <div class="empty-card">
-            <h2>No Findings Returned</h2>
-            <p>No vulnerabilities were detected in the bounded scan. This is not a full security guarantee; increase depth or run manual validation for high-risk assets.</p>
+            <h2>No Findings</h2>
+            <p>No vulnerabilities detected in this scan scope. Increase depth, add session cookies for authenticated targets, or run manual validation.</p>
           </div>
         </div>`;
     } else {
-      data.findings.forEach((finding, index) => {
-        area.appendChild(renderFinding(finding, index));
-        log(`[${finding.severity}] ${finding.type}`, finding.severity === "CRITICAL" ? "err" : "active");
+      data.findings.forEach((f, i) => {
+        area.appendChild(renderFinding(f, i));
+        log(`[${f.severity}] ${f.type}`, f.severity === "CRITICAL" || f.severity === "HIGH" ? "err" : "active");
       });
     }
 
-    setStatus(`Scan complete - ${data.total} findings`, "done");
-    log(`[report] complete; ${data.total} findings`, "active");
+    setStatus(`Scan complete — ${data.total} finding(s)`, "done");
+    log(`[report] complete; ${data.total} finding(s)`, "active");
+
   } catch (err) {
     scanRunning = false;
     setStatus("Scan failed", "err");
@@ -815,13 +801,13 @@ async function startScan() {
       </div>`;
   } finally {
     scanRunning = false;
-    document.getElementById("scanBtn").disabled = false;
+    document.getElementById("scanBtn").disabled    = false;
     document.getElementById("scanBtn").textContent = "Initialize Scan";
   }
 }
 
-document.getElementById("targetUrl").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") startScan();
+document.getElementById("targetUrl").addEventListener("keydown", e => {
+  if (e.key === "Enter") startScan();
 });
 </script>
 </body>
