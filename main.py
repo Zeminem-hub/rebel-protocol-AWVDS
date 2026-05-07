@@ -1,110 +1,127 @@
-"""
-main.py — Rebel Protocol AWVDS v2.0
-Entry point: crawl → scan → report.
+import asyncio
+import argparse
+import time
+import sys
+from colorama import Fore, Style, init
+init(autoreset=True)
 
-Usage:
-  python main.py --url http://target.com
-  python main.py --url http://dvwa.local --depth 3 --cookies "PHPSESSID=abc; security=low"
-"""
-import argparse, sys, time
-from core.crawler            import run_crawl
-from modules.sqli            import run_sqli_scan
-from modules.xss             import run_xss_scan
-from modules.injections      import run_injection_scan
-from modules.headers         import run_header_scan
-from modules.csrf            import run_csrf_scan
-from modules.sensitive_files import run_sensitive_scan
-from reports.generator       import generate_report, print_summary
-from utils.logger            import banner, info, warning, error, success
+from core.crawler import Crawler
+from modules.sqli import SQLiScanner
+from modules.xss import XSSScanner
+from modules.headers import HeadersScanner
+from modules.sensitive_files import SensitiveFileScanner
+from modules.csrf import CSRFScanner
+from utils.payloads import SQL_PAYLOADS, XSS_PAYLOADS
+from reports.generator import generate_report
+from utils.logger import info, success, error
 
-REBEL_BANNER = r"""
-██████╗ ███████╗██████╗ ███████╗██╗
-██╔══██╗██╔════╝██╔══██╗██╔════╝██║
-██████╔╝█████╗  ██████╔╝█████╗  ██║
-  Rebel Protocol — AWVDS v2.0
-  Automated Web Vulnerability Detection System
-"""
+
+def banner():
+    print(Fore.RED + r"""
+  ██████╗ ███████╗██████╗ ███████╗██╗
+  ██╔══██╗██╔════╝██╔══██╗██╔════╝██║
+  ██████╔╝█████╗  ██████╔╝█████╗  ██║
+  ██╔══██╗██╔══╝  ██╔══██╗██╔══╝  ██║
+  ██║  ██║███████╗██████╔╝███████╗███████╗
+  ╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝╚══════╝
+
+  ██████╗ ██████╗  ██████╗ ████████╗ ██████╗  ██████╗ ██████╗ ██╗
+  ██╔══██╗██╔══██╗██╔═══██╗╚══██╔══╝██╔═══██╗██╔════╝██╔═══██╗██║
+  ██████╔╝██████╔╝██║   ██║   ██║   ██║   ██║██║     ██║   ██║██║
+  ██╔═══╝ ██╔══██╗██║   ██║   ██║   ██║   ██║██║     ██║   ██║██║
+  ██║     ██║  ██║╚██████╔╝   ██║   ╚██████╔╝╚██████╗╚██████╔╝███████╗
+  ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝  ╚═════╝ ╚═════╝ ╚══════╝
+    """)
+    print(Fore.YELLOW + "  " + "─" * 65)
+    print(Fore.YELLOW + "   SQLi  |  XSS  |  CSRF  |  Headers  |  Sensitive Files  |  v1.0")
+    print(Fore.YELLOW + "  " + "─" * 65)
+    print()
+    msg = "  [ Initializing Rebel Protocol... System Online ]"
+    for char in msg:
+        print(Fore.GREEN + char, end='', flush=True)
+        time.sleep(0.03)
+    print(Style.RESET_ALL + "\n")
+
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Rebel Protocol AWVDS")
-    p.add_argument("--url",          required=True,              help="Target URL")
-    p.add_argument("--depth",        type=int,   default=3,      help="Crawl depth")
-    p.add_argument("--output",       default="reports/report.json", help="Output JSON path")
-    p.add_argument("--timeout",      type=float, default=10.0,   help="Per-request timeout")
-    p.add_argument("--cookies",      default="",                 help='Cookie string e.g. "PHPSESSID=abc; security=low"')
-    p.add_argument("--no-sqli",      action="store_true")
-    p.add_argument("--no-xss",       action="store_true")
-    p.add_argument("--no-headers",   action="store_true")
-    p.add_argument("--no-csrf",      action="store_true")
-    p.add_argument("--no-files",     action="store_true")
-    p.add_argument("--no-injection", action="store_true")
-    return p.parse_args()
+    parser = argparse.ArgumentParser(
+        prog="avwds",
+        description="Rebel Protocol - Automated Web Vulnerability Detection System",
+        epilog="Example: python main.py --url http://testphp.vulnweb.com"
+    )
+    parser.add_argument("--url", "-u", required=True,
+                        help="Target URL to scan")
+    parser.add_argument("--depth", "-d", type=int, default=2,
+                        help="Crawl depth (default: 2)")
+    parser.add_argument("--output", "-o", default="report.json",
+                        help="Output report file (default: report.json)")
+    parser.add_argument("--delay", type=float, default=0.5,
+                        help="Delay between requests (default: 0.5)")
+    parser.add_argument("--no-sqli", action="store_true",
+                        help="Skip SQL injection scan")
+    parser.add_argument("--no-xss", action="store_true",
+                        help="Skip XSS scan")
+    parser.add_argument("--no-headers", action="store_true",
+                        help="Skip headers check")
+    parser.add_argument("--no-files", action="store_true",
+                        help="Skip sensitive files scan")
+    return parser.parse_args()
 
-def parse_cookies(s):
-    c = {}
-    for part in s.split(";"):
-        part = part.strip()
-        if "=" in part:
-            k, _, v = part.partition("="); c[k.strip()] = v.strip()
-    return c
+
+async def run_scan(args):
+    banner()
+    all_findings = []
+
+    print(Fore.CYAN + f"  Target  : {args.url}")
+    print(Fore.CYAN + f"  Depth   : {args.depth}")
+    print(Fore.CYAN + f"  Output  : {args.output}")
+    print()
+
+    # Phase 1: Crawl
+    info("Phase 1: Crawling target website...")
+    crawler = Crawler(args.url, depth=args.depth)
+    endpoints = await crawler.start()
+    info(f"Found {len(endpoints)} testable endpoints\n")
+
+    # Phase 2: Scan endpoints
+    info("Phase 2: Running vulnerability scans...")
+    for i, endpoint in enumerate(endpoints):
+        info(f"Scanning {i+1}/{len(endpoints)}: {endpoint['url']}")
+
+        if not args.no_sqli:
+            sqli = SQLiScanner(SQL_PAYLOADS)
+            all_findings.extend(await sqli.scan(endpoint))
+
+        if not args.no_xss:
+            xss = XSSScanner(XSS_PAYLOADS)
+            all_findings.extend(await xss.scan(endpoint))
+
+        csrf = CSRFScanner()
+        all_findings.extend(await csrf.scan(endpoint))
+
+        await asyncio.sleep(args.delay)
+
+    # Phase 3: Headers
+    if not args.no_headers:
+        info("\nPhase 3: Checking security headers...")
+        headers_scanner = HeadersScanner()
+        all_findings.extend(await headers_scanner.scan(args.url))
+
+    # Phase 4: Sensitive Files
+    if not args.no_files:
+        info("\nPhase 4: Scanning for sensitive files...")
+        file_scanner = SensitiveFileScanner()
+        all_findings.extend(await file_scanner.scan(args.url))
+
+    # Phase 5: Report
+    info("\nPhase 5: Generating report...")
+    generate_report(args.url, all_findings, args.output)
+
 
 def main():
-    banner(REBEL_BANNER)
-    args    = parse_args()
-    target  = args.url.rstrip("/")
-    cookies = parse_cookies(args.cookies)
+    args = parse_args()
+    asyncio.run(run_scan(args))
 
-    info(f"Target  : {target}")
-    info(f"Depth   : {args.depth}")
-    info(f"Output  : {args.output}")
-    if cookies: info(f"Cookies : {list(cookies.keys())}")
-
-    all_findings = []
-    t0 = time.monotonic()
-
-    # ── Phase 1: Crawl ────────────────────────────────────────
-    info("\n[Phase 1] Crawling target...")
-    try:
-        cr = run_crawl(base_url=target, max_depth=args.depth, max_pages=300,
-                       timeout=args.timeout, cookies=cookies)
-    except Exception as e:
-        error(f"Crawl failed: {e}"); sys.exit(1)
-
-    endpoints = cr["endpoints"]
-    forms     = cr["forms"]
-    visited   = cr["visited"]
-    success(f"Crawl done — {len(visited)} pages | {len(endpoints)} endpoints | {len(forms)} forms")
-
-    # ── Phase 2: Scan ─────────────────────────────────────────
-    info("\n[Phase 2] Scanning for vulnerabilities...")
-
-    scan_tasks = [
-        ("SQL Injection",      args.no_sqli,      run_sqli_scan,      {"endpoints": endpoints, "cookies": cookies, "timeout": args.timeout}),
-        ("XSS",                args.no_xss,        run_xss_scan,       {"endpoints": endpoints, "cookies": cookies, "timeout": args.timeout}),
-        ("CMDi/Traversal/LFI", args.no_injection,  run_injection_scan, {"endpoints": endpoints, "cookies": cookies, "timeout": args.timeout}),
-        ("Security Headers",   args.no_headers,    run_header_scan,    {"base_url": target, "visited_urls": visited, "cookies": cookies, "timeout": args.timeout}),
-        ("CSRF",               args.no_csrf,        run_csrf_scan,      {"forms": forms, "base_url": target, "cookies": cookies, "timeout": args.timeout}),
-        ("Sensitive Files",    args.no_files,       run_sensitive_scan, {"base_url": target, "visited_urls": visited, "cookies": cookies, "timeout": args.timeout}),
-    ]
-
-    for label, skip, fn, kwargs in scan_tasks:
-        if not skip:
-            info(f"→ {label}...")
-            try: all_findings.extend(fn(**kwargs))
-            except Exception as e: error(f"{label} error: {e}")
-
-    # ── Phase 3: Report ───────────────────────────────────────
-    elapsed = time.monotonic() - t0
-    info(f"\n[Phase 3] Generating report... (total: {elapsed:.1f}s)")
-
-    report = generate_report(
-        target_url=target,
-        findings=all_findings,
-        scan_meta={"duration_seconds": round(elapsed, 2), "pages_crawled": len(visited),
-                   "endpoints_tested": len(endpoints), "forms_tested": len(forms)},
-        output_path=args.output,
-    )
-    print_summary(report)
 
 if __name__ == "__main__":
     main()

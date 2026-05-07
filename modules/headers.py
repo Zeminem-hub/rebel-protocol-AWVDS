@@ -1,39 +1,56 @@
-"""headers.py — Rebel Protocol AWVDS — Security headers, CORS, insecure cookies."""
-import asyncio
 import httpx
-from utils.payloads import SECURITY_HEADERS
-from utils.logger import info
+from utils.logger import warning, info
 
-async def scan_headers(base_url,visited_urls=None,headers=None,cookies=None,timeout=10.0):
-    headers=headers or {}; cookies=cookies or {}; findings=[]; seen=set()
-    urls=[base_url]+([u for u in visited_urls if u!=base_url][:4] if visited_urls else [])
-    async with httpx.AsyncClient(verify=False,follow_redirects=True) as client:
-        for url in urls:
-            try: resp=await client.get(url,headers=headers,cookies=cookies,timeout=timeout)
-            except: continue
-            rh=resp.headers
-            for hname,meta in SECURITY_HEADERS.items():
-                if hname.lower() not in {k.lower() for k in rh.keys()}:
-                    key=f"missing:{hname}"
-                    if key not in seen:
-                        seen.add(key)
-                        findings.append({"type":"Missing Security Header","url":url,"parameter":hname,"payload":"N/A","severity":meta["severity"],"confidence":99,"evidence":f"Header '{hname}' absent","method":"GET","cwe":meta["cwe"],"recommendation":meta["recommendation"]})
-            acao=rh.get("access-control-allow-origin","")
-            if acao=="*":
-                key="cors:wildcard"
-                if key not in seen:
-                    seen.add(key)
-                    findings.append({"type":"Weak CORS — Wildcard","url":url,"parameter":"Access-Control-Allow-Origin","payload":"N/A","severity":"MEDIUM","confidence":95,"evidence":"ACAO: * (any origin)","method":"GET","cwe":"CWE-942","recommendation":"Restrict CORS to specific trusted origins."})
-            if acao and acao!="*" and rh.get("access-control-allow-credentials","").lower()=="true":
-                try:
-                    er=await client.get(url,headers={**headers,"Origin":"https://evil.com"},cookies=cookies,timeout=timeout)
-                    if er.headers.get("access-control-allow-origin","")=="https://evil.com":
-                        key="cors:reflect"
-                        if key not in seen:
-                            seen.add(key)
-                            findings.append({"type":"CORS Misconfiguration — Origin Reflection","url":url,"parameter":"Access-Control-Allow-Origin","payload":"Origin: https://evil.com","severity":"HIGH","confidence":90,"evidence":"Server reflects arbitrary Origin with credentials=true","method":"GET","cwe":"CWE-942","recommendation":"Validate Origin against a strict whitelist."})
-                except: pass
-    info(f"Header scan done. {len(findings)} finding(s)."); return findings
+class HeadersScanner:
+    def __init__(self):
+        self.findings = []
+        # Header name → (severity, what it does)
+        self.required_headers = {
+            "Content-Security-Policy":   ("HIGH",   "Prevents XSS attacks"),
+            "Strict-Transport-Security": ("HIGH",   "Forces HTTPS"),
+            "X-Frame-Options":           ("MEDIUM", "Prevents clickjacking"),
+            "X-Content-Type-Options":    ("LOW",    "Prevents MIME sniffing"),
+            "Referrer-Policy":           ("LOW",    "Controls referrer info"),
+            "Permissions-Policy":        ("LOW",    "Controls browser features"),
+        }
+        # Headers that reveal server info (bad)
+        self.info_disclosure_headers = [
+            "Server", "X-Powered-By", "X-AspNet-Version", "X-Generator"
+        ]
 
-def run_header_scan(base_url,visited_urls=None,headers=None,cookies=None,timeout=10.0):
-    return asyncio.run(scan_headers(base_url,visited_urls,headers,cookies,timeout))
+    async def scan(self, url):
+        info(f"Checking security headers for: {url}")
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(url)
+                headers = response.headers
+
+                # Check missing security headers
+                for header, (severity, purpose) in self.required_headers.items():
+                    if header.lower() not in [h.lower() for h in headers.keys()]:
+                        finding = {
+                            "type": f"Missing Security Header: {header}",
+                            "url": url,
+                            "severity": severity,
+                            "description": f"Header '{header}' is missing. Purpose: {purpose}"
+                        }
+                        self.findings.append(finding)
+                        warning(f"Missing header: {header}")
+
+                # Check information disclosure headers
+                for header in self.info_disclosure_headers:
+                    if header.lower() in [h.lower() for h in headers.keys()]:
+                        value = headers.get(header, "")
+                        finding = {
+                            "type": f"Server Information Disclosure: {header}",
+                            "url": url,
+                            "severity": "LOW",
+                            "evidence": value,
+                            "description": f"Header '{header}: {value}' reveals server technology"
+                        }
+                        self.findings.append(finding)
+
+        except Exception as e:
+            pass
+
+        return self.findings
