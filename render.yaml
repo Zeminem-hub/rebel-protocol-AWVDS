@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: rebel-protocol-AWVDS
+    name: automated-web-vulnerability-detection-system
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: python app.py

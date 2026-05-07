@@ -36,7 +36,7 @@ def banner():
     print(Fore.YELLOW + "   SQLi  |  XSS  |  CSRF  |  Headers  |  Sensitive Files  |  v1.0")
     print(Fore.YELLOW + "  " + "─" * 65)
     print()
-    msg = "  [ Initializing Rebel Protocol... System Online ]"
+    msg = "  [ Initializing Automated Web Vulnerability Detection System... System Online ]"
     for char in msg:
         print(Fore.GREEN + char, end='', flush=True)
         time.sleep(0.03)
@@ -46,7 +46,7 @@ def banner():
 def parse_args():
     parser = argparse.ArgumentParser(
         prog="avwds",
-        description="Rebel Protocol - Automated Web Vulnerability Detection System",
+        description="Automated Web Vulnerability Detection System",
         epilog="Example: python main.py --url http://testphp.vulnweb.com"
     )
     parser.add_argument("--url", "-u", required=True,

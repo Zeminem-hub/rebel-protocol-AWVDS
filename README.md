@@ -1,14 +1,14 @@
-# Rebel Protocol AVWDS
+# Automated Web Vulnerability Detection System
 
 **Automated Web Vulnerability Detection System**
 
-Rebel Protocol AVWDS is a Python-based web vulnerability scanner built for authorized security testing, learning, and research. It provides both a browser-based scanner interface and a command-line workflow for identifying common web application security issues.
+Automated Web Vulnerability Detection System is a Python-based web vulnerability scanner built for authorized security testing, learning, and research. It provides both a browser-based scanner interface and a command-line workflow for identifying common web application security issues.
 
 The project is designed to run locally during development and can also be hosted as a web application so users can access the scanner through a website interface.
 
 ## Overview
 
-Rebel Protocol crawls a target web application, discovers testable endpoints, and runs multiple security checks against the discovered attack surface. The scanner focuses on practical vulnerability signals that are commonly found during web application assessments.
+Automated Web Vulnerability Detection System crawls a target web application, discovers testable endpoints, and runs multiple security checks against the discovered attack surface. The scanner focuses on practical vulnerability signals that are commonly found during web application assessments.
 
 This project includes:
 
