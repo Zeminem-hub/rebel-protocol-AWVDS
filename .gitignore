@@ -1,10 +1,17 @@
- venv/
+venv/
+.venv/
+.codex_python/
+.tmp/
 __pycache__/
 *.pyc
 *.pyo
 report.json
 scan.log
+server*.log
+*.out.log
+*.err.log
 .env
 *.egg-info/
 dist/
 build/
+run_808*.py

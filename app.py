@@ -4,11 +4,20 @@ import sys
 import os
 
 app = Flask(__name__)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 # ── Add your avwds project to path ──────────────────────────
 # Change this to your actual project path
 AVWDS_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AVWDS_PATH)
+
+
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # ── Routes ───────────────────────────────────────────────────
 
@@ -25,10 +34,16 @@ def scan():
     data = request.json
     target_url = data.get("url", "")
     depth      = int(data.get("depth", 2))
-    no_sqli    = data.get("no_sqli", False)
-    no_xss     = data.get("no_xss", False)
-    no_headers = data.get("no_headers", False)
-    no_files   = data.get("no_files", False)
+    cookies    = data.get("cookies", "").strip()
+    no_sqli    = data.get("no_sqli") is True
+    no_xss     = data.get("no_xss") is True
+    no_headers = data.get("no_headers") is True
+    no_files   = data.get("no_files") is True
+    no_csrf    = data.get("no_csrf") is True
+    scan_headers = {"Cookie": cookies} if cookies else {}
+
+    if all([no_sqli, no_xss, no_headers, no_files, no_csrf]):
+        no_sqli = no_xss = no_headers = no_files = no_csrf = False
 
     if not target_url.startswith(("http://", "https://")):
         return jsonify({"error": "Invalid URL. Must start with http:// or https://"}), 400
@@ -45,39 +60,61 @@ def scan():
 
             async def do_scan():
                 findings = []
-                crawler  = Crawler(target_url, depth=depth)
-                endpoints = await crawler.start()
+                diagnostics = []
+                endpoints = []
+
+                try:
+                    crawler = Crawler(target_url, depth=depth, headers=scan_headers)
+                    endpoints = await crawler.start()
+                except Exception as e:
+                    diagnostics.append(f"Crawler failed: {e}")
 
                 for ep in endpoints:
                     if not no_sqli:
-                        s = SQLiScanner(SQL_PAYLOADS)
-                        findings.extend(await s.scan(ep))
+                        try:
+                            s = SQLiScanner(SQL_PAYLOADS, headers=scan_headers)
+                            findings.extend(await s.scan(ep))
+                        except Exception as e:
+                            diagnostics.append(f"SQLi scanner failed for {ep.get('url', 'endpoint')}: {e}")
                     if not no_xss:
-                        s = XSSScanner(XSS_PAYLOADS)
-                        findings.extend(await s.scan(ep))
-                    s = CSRFScanner()
-                    findings.extend(await s.scan(ep))
+                        try:
+                            s = XSSScanner(XSS_PAYLOADS, headers=scan_headers)
+                            findings.extend(await s.scan(ep))
+                        except Exception as e:
+                            diagnostics.append(f"XSS scanner failed for {ep.get('url', 'endpoint')}: {e}")
+                    if not no_csrf:
+                        try:
+                            s = CSRFScanner()
+                            findings.extend(await s.scan(ep))
+                        except Exception as e:
+                            diagnostics.append(f"CSRF scanner failed for {ep.get('url', 'endpoint')}: {e}")
 
                 if not no_headers:
-                    s = HeadersScanner()
-                    findings.extend(await s.scan(target_url))
+                    try:
+                        s = HeadersScanner(headers=scan_headers)
+                        findings.extend(await s.scan(target_url))
+                    except Exception as e:
+                        diagnostics.append(f"Headers scanner failed: {e}")
 
                 if not no_files:
-                    s = SensitiveFileScanner()
-                    findings.extend(await s.scan(target_url))
+                    try:
+                        s = SensitiveFileScanner(headers=scan_headers)
+                        findings.extend(await s.scan(target_url))
+                    except Exception as e:
+                        diagnostics.append(f"Sensitive file scanner failed: {e}")
 
-                return findings, len(endpoints)
+                return findings, len(endpoints), diagnostics
 
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            findings, ep_count = loop.run_until_complete(do_scan())
+            findings, ep_count, diagnostics = loop.run_until_complete(do_scan())
             loop.close()
-            return findings, ep_count
+            return findings, ep_count, diagnostics
 
         except Exception as e:
-            return [], 0
+            return [], 0, [f"Scan failed: {e}"]
 
-    findings, ep_count = run()
+    findings, ep_count, diagnostics = run()
 
     severity_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
     findings.sort(key=lambda x: severity_rank.get(x.get("severity", "INFO"), 4))
@@ -93,7 +130,8 @@ def scan():
         "endpoints": ep_count,
         "total":     len(findings),
         "summary":   summary,
-        "findings":  findings
+        "findings":  findings,
+        "diagnostics": diagnostics
     })
 
 

@@ -3,8 +3,9 @@ from utils.payloads import SENSITIVE_PATHS
 from utils.logger import critical, warning
 
 class SensitiveFileScanner:
-    def __init__(self):
+    def __init__(self, headers=None):
         self.findings = []
+        self.headers = headers or {}
 
     async def scan(self, base_url):
         base = base_url.rstrip("/")
@@ -16,7 +17,7 @@ class SensitiveFileScanner:
             for path in SENSITIVE_PATHS:
                 url = base + path
                 try:
-                    response = await client.get(url)
+                    response = await client.get(url, headers=self.headers)
                     
                     if response.status_code == 200:
                         severity = "CRITICAL" if any(

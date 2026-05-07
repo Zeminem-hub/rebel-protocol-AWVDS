@@ -31,7 +31,8 @@
       #010403;
     color: var(--text);
     font-family: "IBM Plex Mono", monospace;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   body::before,
@@ -112,6 +113,7 @@
     min-height: 0;
     display: grid;
     grid-template-columns: minmax(320px, 390px) 1fr;
+    height: calc(100vh - 54px);
   }
 
   .config,
@@ -123,6 +125,7 @@
   .config {
     border-right: 1px solid var(--line-soft);
     overflow-y: auto;
+    max-height: calc(100vh - 54px);
   }
 
   .panel-head {
@@ -244,10 +247,23 @@
     line-height: 1.5;
   }
 
+  .button-stack {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    margin: 0.25rem -1.4rem 1rem;
+    padding: 0.9rem 1.4rem;
+    border-top: 1px solid var(--line-soft);
+    background: rgba(1, 7, 4, 0.94);
+    backdrop-filter: blur(14px);
+  }
+
   .btn-scan {
     width: 100%;
     min-height: 48px;
-    margin: 0.25rem 0 1rem;
     border: 1px solid rgba(45,255,145,0.5);
     background: linear-gradient(180deg, rgba(45,255,145,0.22), rgba(45,255,145,0.08));
     color: #effff6;
@@ -258,15 +274,57 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   }
 
+  .btn-scan.prepare {
+    border-color: rgba(92,183,255,0.44);
+    background: linear-gradient(180deg, rgba(92,183,255,0.18), rgba(92,183,255,0.06));
+  }
+
+  .btn-scan.attack {
+    border-color: rgba(255,59,79,0.58);
+    background:
+      linear-gradient(180deg, rgba(255,59,79,0.28), rgba(255,59,79,0.1)),
+      rgba(20, 2, 5, 0.78);
+    box-shadow: inset 0 0 22px rgba(255,59,79,0.055);
+  }
+
+  .btn-scan.attack.ready {
+    animation: attackReady 1.6s ease-in-out infinite;
+  }
+
   .btn-scan:hover {
     transform: translateY(-1px);
     box-shadow: 0 0 28px rgba(45,255,145,0.18), inset 0 0 22px rgba(45,255,145,0.045);
   }
 
   .btn-scan:disabled {
-    opacity: 0.45;
+    opacity: 0.72;
     cursor: not-allowed;
     transform: none;
+  }
+
+  @keyframes attackReady {
+    0%, 100% { box-shadow: 0 0 18px rgba(255,59,79,0.1), inset 0 0 22px rgba(255,59,79,0.055); }
+    50% { box-shadow: 0 0 30px rgba(255,59,79,0.22), inset 0 0 26px rgba(255,59,79,0.075); }
+  }
+
+  .armed-panel {
+    display: none;
+    border: 1px solid rgba(92,183,255,0.28);
+    background: rgba(92,183,255,0.055);
+    padding: 0.8rem;
+    margin-bottom: 0.9rem;
+    color: rgba(216,248,233,0.72);
+    font-size: 0.68rem;
+    line-height: 1.6;
+  }
+
+  .armed-panel strong {
+    display: block;
+    color: var(--blue);
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
   }
 
   .results {
@@ -455,8 +513,8 @@
     .shell { min-height: 100vh; }
     .topbar { grid-template-columns: 1fr auto; }
     .topbar-center { display: none; }
-    .console { grid-template-columns: 1fr; }
-    .config { border-right: 0; border-bottom: 1px solid var(--line-soft); }
+    .console { grid-template-columns: 1fr; height: auto; }
+    .config { border-right: 0; border-bottom: 1px solid var(--line-soft); max-height: none; }
     .results { min-height: 720px; }
   }
 
@@ -516,13 +574,14 @@
             <label class="toggle-item"><input type="checkbox" id="headers"   checked> Headers</label>
             <label class="toggle-item"><input type="checkbox" id="files"     checked> Files</label>
             <label class="toggle-item"><input type="checkbox" id="csrf"      checked> CSRF</label>
-            <label class="toggle-item"><input type="checkbox" id="injection" checked> CMDi/LFI</label>
           </div>
         </div>
 
         <div id="errorMsg" class="error-msg"></div>
 
-        <button class="btn-scan" id="scanBtn" onclick="startScan()">Initialize Scan</button>
+        <div class="button-stack">
+          <button class="btn-scan attack ready" id="attackBtn" onclick="startScan()">Start Attack</button>
+        </div>
 
         <div class="notice">
           This scanner sends real HTTP probes to the target. Use only on authorized systems.
@@ -549,7 +608,7 @@
         <div class="idle-state" id="idleState">
           <div class="idle-card">
             <h2>Awaiting Target</h2>
-            <p>Enter a URL, select modules, and initialize a scan.</p>
+            <p>Enter a URL, select modules, and start the authorized test run.</p>
             <div class="phase-list" id="phaseList">
               <div class="phase pending" data-phase="crawler"> <span>Crawler</span>       <strong>Standby</strong></div>
               <div class="phase pending" data-phase="payloads"><span>Payload Engine</span><strong>Standby</strong></div>
@@ -643,7 +702,7 @@ function setPhase(phase, detail) {
 function startProgressSimulation(url) {
   const steps = [
     { t: 0,     phase: "crawler",  status: "Crawling target surface",        msg: "[crawler] mapping pages, forms, and parameters" },
-    { t: 5500,  phase: "payloads", status: "Testing discovered inputs",       msg: "[payload] running SQLi, XSS, CMDi, LFI probes" },
+    { t: 5500,  phase: "payloads", status: "Testing discovered inputs",       msg: "[payload] running SQLi, XSS, and CSRF probes" },
     { t: 18000, phase: "posture",  status: "Checking headers and files",      msg: "[posture] evaluating headers and sensitive paths" },
     { t: 30000, phase: "report",   status: "Correlating findings",            msg: "[report] sorting evidence by severity" },
   ];
@@ -701,9 +760,7 @@ function escHtml(str) {
 
 function escAttr(str) { return String(str||"").replace(/[^A-Z]/g,""); }
 
-async function startScan() {
-  if (scanRunning) return;
-
+function collectScanConfig() {
   const url      = document.getElementById("targetUrl").value.trim();
   const depth    = parseInt(document.getElementById("depth").value, 10);
   const cookies  = document.getElementById("cookiesInput").value.trim();
@@ -712,18 +769,48 @@ async function startScan() {
   const noHdr    = !document.getElementById("headers")  .checked;
   const noFiles  = !document.getElementById("files")    .checked;
   const noCsrf   = !document.getElementById("csrf")     .checked;
-  const noInject = !document.getElementById("injection").checked;
 
   hideError();
 
-  if (!url) { showError("Please enter a target URL."); return; }
+  if (!url) { showError("Please enter a target URL."); return null; }
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    showError("URL must start with http:// or https://"); return;
+    showError("URL must start with http:// or https://"); return null;
   }
 
+  return {
+    url,
+    depth,
+    cookies,
+    no_sqli: noSqli,
+    no_xss: noXss,
+    no_headers: noHdr,
+    no_files: noFiles,
+    no_csrf: noCsrf
+  };
+}
+
+function selectedModuleNames(config) {
+  const modules = [];
+  if (!config.no_sqli) modules.push("SQLi");
+  if (!config.no_xss) modules.push("XSS");
+  if (!config.no_headers) modules.push("Headers");
+  if (!config.no_files) modules.push("Files");
+  if (!config.no_csrf) modules.push("CSRF");
+  return modules.length ? modules.join(", ") : "No active modules";
+}
+
+async function startScan() {
+  if (scanRunning) return;
+
+  const config = collectScanConfig();
+  if (!config) return;
+
+  const { url, depth, cookies } = config;
+
   scanRunning = true;
-  document.getElementById("scanBtn").disabled    = true;
-  document.getElementById("scanBtn").textContent = "Scan Running";
+  document.getElementById("attackBtn").disabled = true;
+  document.getElementById("attackBtn").classList.remove("ready");
+  document.getElementById("attackBtn").textContent = "Attack Running";
   document.getElementById("resultsArea").innerHTML = "";
   document.getElementById("logPanel").innerHTML    = "";
   document.getElementById("epCount").textContent   = "";
@@ -741,17 +828,7 @@ async function startScan() {
     const res = await fetch("/scan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url,
-        depth,
-        cookies,
-        no_sqli:      noSqli,
-        no_xss:       noXss,
-        no_headers:   noHdr,
-        no_files:     noFiles,
-        no_csrf:      noCsrf,
-        no_injection: noInject,
-      })
+      body: JSON.stringify(config)
     });
 
     const data = await res.json();
@@ -801,8 +878,10 @@ async function startScan() {
       </div>`;
   } finally {
     scanRunning = false;
-    document.getElementById("scanBtn").disabled    = false;
-    document.getElementById("scanBtn").textContent = "Initialize Scan";
+    document.getElementById("attackBtn").disabled = true;
+    document.getElementById("attackBtn").textContent = "Start Attack";
+    document.getElementById("attackBtn").classList.add("ready");
+    document.getElementById("attackBtn").disabled = false;
   }
 }
 

@@ -2,8 +2,9 @@ import httpx
 from utils.logger import warning
 
 class XSSScanner:
-    def __init__(self, payloads):
+    def __init__(self, payloads, headers=None):
         self.payloads = payloads
+        self.headers = headers or {}
         self.findings = []
 
     async def scan(self, endpoint):
@@ -35,7 +36,7 @@ class XSSScanner:
     async def _send_request(self, endpoint, params):
         try:
             async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
-                headers = {"User-Agent": "Mozilla/5.0 (AVWDS Scanner)"}
+                headers = {"User-Agent": "Mozilla/5.0 (AVWDS Scanner)", **self.headers}
                 if endpoint["method"] == "POST":
                     return await client.post(endpoint["url"], data=params, headers=headers)
                 else:

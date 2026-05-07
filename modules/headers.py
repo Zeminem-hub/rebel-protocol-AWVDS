@@ -2,8 +2,9 @@ import httpx
 from utils.logger import warning, info
 
 class HeadersScanner:
-    def __init__(self):
+    def __init__(self, headers=None):
         self.findings = []
+        self.headers = headers or {}
         # Header name → (severity, what it does)
         self.required_headers = {
             "Content-Security-Policy":   ("HIGH",   "Prevents XSS attacks"),
@@ -22,7 +23,7 @@ class HeadersScanner:
         info(f"Checking security headers for: {url}")
         try:
             async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.get(url)
+                response = await client.get(url, headers=self.headers)
                 headers = response.headers
 
                 # Check missing security headers

@@ -1,123 +1,166 @@
- # 🔴 Rebel Protocol — AVWDS
+# Rebel Protocol - AVWDS
 
-> Automated Web Vulnerability Detection System built with Python
+Automated Web Vulnerability Detection System built with Python and Flask.
 
----
+Rebel Protocol helps authorized security testers crawl a web application and check for common vulnerability signals from a single command-line or browser-based workflow.
 
-## 📌 What is This?
+## Features
 
-Rebel Protocol is a command-line security tool that automatically 
-scans websites for common vulnerabilities including:
+- SQL injection detection
+- Reflected cross-site scripting detection
+- CSRF token checks on POST forms
+- Missing security header checks
+- Exposed sensitive file/path checks
+- Crawl depth control
+- Optional session cookie support for authenticated testing
+- JSON report output from the CLI
+- Web scanner interface with live status, findings, and severity summary
 
-- SQL Injection (SQLi)
-- Cross Site Scripting (XSS)
-- CSRF vulnerabilities
-- Missing Security Headers
-- Exposed Sensitive Files (.env, .git, backup files etc.)
-
----
-
-## 💻 Requirements
+## Requirements
 
 - Python 3.8 or higher
 - pip
 - Git
+- Chromium browser installed through Playwright
 
----
+## Installation
 
-## ⚙️ Installation
+Clone the project:
 
-### 1. Clone the project
+```bash
 git clone https://github.com/Zeminem-hub/rebel-protocol-AWVDS.git
-
-### 2. Go into the folder
 cd rebel-protocol-AWVDS
+```
 
-### 3. Create virtual environment
-python -m venv venv
-
-### 4. Activate virtual environment
+Create and activate a virtual environment.
 
 Windows:
-venv\Scripts\activate.bat
 
-Mac/Linux:
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+macOS/Linux:
+
+```bash
+python -m venv venv
 source venv/bin/activate
+```
 
-### 5. Install required libraries
-pip install -r requirements.txt
+Install dependencies:
 
-### 6. Install browser for crawling
-playwright install chromium
+```bash
+python -m pip install -r requirements.txt
+python -m playwright install chromium
+```
 
----
+If `playwright` is not recognized as a command, always use:
 
-## 🚀 How to Use
+```bash
+python -m playwright install chromium
+```
+
+## Run the Web Scanner
+
+Start the Flask app:
+
+```bash
+python app.py
+```
+
+Open the scanner in your browser:
+
+```text
+http://127.0.0.1:8080/scanner
+```
+
+If port `8080` is already in use, start the app on another port.
+
+PowerShell example:
+
+```powershell
+$env:PORT="8082"
+python app.py
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8082/scanner
+```
+
+## Use the Web Scanner
+
+1. Enter a target URL that starts with `http://` or `https://`.
+2. Choose the crawl depth.
+3. Add session cookies if the target requires authentication.
+4. Keep all modules checked for maximum coverage.
+5. Click **Start Attack** to begin the authorized scan.
+
+## Run the CLI Scanner
 
 Basic scan:
+
+```bash
 python main.py --url http://example.com
+```
 
 Scan with custom depth:
+
+```bash
 python main.py --url http://example.com --depth 3
+```
 
-Save report to custom file:
+Save the report to a custom file:
+
+```bash
 python main.py --url http://example.com --output results.json
+```
 
-Skip certain scans:
+Skip selected modules:
+
+```bash
 python main.py --url http://example.com --no-sqli
 python main.py --url http://example.com --no-xss
+python main.py --url http://example.com --no-headers
+python main.py --url http://example.com --no-files
+```
 
-See all options:
+Show all CLI options:
+
+```bash
 python main.py --help
+```
 
----
+## Project Structure
 
-## 📊 Example Output
-
-    ██████╗ ███████╗██████╗ ███████╗██╗
-    ██╔══██╗██╔════╝██╔══██╗██╔════╝██║
-    ██████╔╝█████╗  ██████╔╝█████╗  ██║
-
-  [ Initializing Rebel Protocol... System Online ]
-
-  [*] Phase 1: Crawling target website...
-  [*] Found 8 testable endpoints
-  [CRITICAL] SQL Injection found! → http://example.com/search.php
-  [HIGH] XSS found! → http://example.com/comment.php
-  [MEDIUM] Missing Header: Content-Security-Policy
-  [+] Report saved to: report.json
-
----
-
-## 📁 Project Structure
-
+```text
 avwds/
-├── main.py                  ← Entry point
-├── config.py                ← Settings
-├── setup.py                 ← Package setup
-├── requirements.txt         ← Dependencies
+├── app.py                    # Flask web interface
+├── main.py                   # CLI entry point
+├── config.py                 # Project settings
+├── requirements.txt          # Python dependencies
 ├── core/
-│   └── crawler.py           ← Web crawler
+│   └── crawler.py            # Web crawler
 ├── modules/
-│   ├── sqli.py              ← SQL Injection scanner
-│   ├── xss.py               ← XSS scanner
-│   ├── headers.py           ← Headers checker
-│   ├── sensitive_files.py   ← File scanner
-│   └── csrf.py              ← CSRF checker
-├── utils/
-│   ├── payloads.py          ← Attack payloads
-│   └── logger.py            ← Colored output
-└── reports/
-    └── generator.py         ← Report generator
+│   ├── sqli.py               # SQL injection scanner
+│   ├── xss.py                # XSS scanner
+│   ├── headers.py            # Security headers scanner
+│   ├── sensitive_files.py    # Sensitive file scanner
+│   └── csrf.py               # CSRF checker
+├── reports/
+│   └── generator.py          # JSON report generation
+├── templates/
+│   ├── index.html            # Landing page
+│   └── scanner.html          # Web scanner UI
+└── utils/
+    ├── logger.py             # Console logging helpers
+    └── payloads.py           # Payload and path lists
+```
 
----
+## Important Safety Notice
 
-## ⚠️ Legal Disclaimer
+This project is for educational and authorized security testing only.
 
-This tool is for educational purposes only.
-Only scan websites you own or have explicit written permission to test.
-Unauthorized scanning is illegal.
-The developer is not responsible for misuse of this tool.
-
----
-
+Only scan systems that you own or have explicit written permission to test. Unauthorized scanning can be illegal and harmful. The developer is not responsible for misuse of this tool.

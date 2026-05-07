@@ -5,11 +5,12 @@ import asyncio
 from utils.logger import info, error
 
 class Crawler:
-    def __init__(self, base_url, depth=2, timeout=10):
+    def __init__(self, base_url, depth=2, timeout=10, headers=None):
         self.base_url = base_url.rstrip("/")
         self.domain = urlparse(base_url).netloc
         self.depth = depth
         self.timeout = timeout
+        self.headers = headers or {}
         self.visited_urls = set()
         self.endpoints = []   # All discovered forms & URL params
 
@@ -56,7 +57,7 @@ class Crawler:
     async def _fetch_page(self, url):
         try:
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-                headers = {"User-Agent": "Mozilla/5.0 (AVWDS Scanner)"}
+                headers = {"User-Agent": "Mozilla/5.0 (AVWDS Scanner)", **self.headers}
                 response = await client.get(url, headers=headers)
                 return response.text
         except Exception as e:
