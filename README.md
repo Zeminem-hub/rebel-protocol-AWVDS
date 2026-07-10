@@ -83,8 +83,8 @@ web: gunicorn app:app --bind 0.0.0.0:$PORT
 Clone the repository:
 
 ```bash
-git clone https://github.com/Zeminem-hub/rebel-protocol-AWVDS.git
-cd rebel-protocol-AWVDS
+git clone https://github.com/Zeminem-hub/AWVDS.git
+cd AWVDS
 ```
 
 Create a virtual environment:
