@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import asyncio
 from utils.logger import info, error
+from config import USER_AGENT
 
 
 class Crawler:
@@ -11,7 +12,7 @@ class Crawler:
         self.domain = urlparse(base_url).netloc
         self.depth = depth
         self.timeout = timeout
-        self.headers = {"User-Agent": "Mozilla/5.0 (AWVDS Scanner)", **(headers or {})}
+        self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
         self.visited_urls = set()
         self.endpoints = []
         self._client = httpx.AsyncClient(
@@ -70,7 +71,13 @@ class Crawler:
     async def _fetch_page(self, url):
         try:
             response = await self._client.get(url)
-            return response.text
+            text = response.text
+            # Cheap tag counts for debugging — helps distinguish blocked/UA-filtered
+            # responses from JS-rendered pages.
+            a_count = text.lower().count("<a ")
+            form_count = text.lower().count("<form")
+            info(f"[fetch] {response.status_code} {url} · <a>={a_count} <form>={form_count}")
+            return text
         except Exception as e:
             error(f"Failed to fetch {url}: {e}")
             return None

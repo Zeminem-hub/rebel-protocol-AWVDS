@@ -2,6 +2,7 @@ import re
 import httpx
 from utils.payloads import SENSITIVE_PATHS
 from utils.logger import critical
+from config import USER_AGENT
 
 
 PUBLIC_PATHS = {"/robots.txt", "/sitemap.xml"}
@@ -11,7 +12,7 @@ INTERESTING_DISALLOW = re.compile(r"(?im)^\s*disallow:\s*(/(?:admin|backup|priva
 class SensitiveFileScanner:
     def __init__(self, headers=None, client=None):
         self.findings = []
-        self.headers = {"User-Agent": "Mozilla/5.0 (AWVDS Scanner)", **(headers or {})}
+        self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
         self._external_client = client is not None
         self.client = client or httpx.AsyncClient(
             timeout=8,

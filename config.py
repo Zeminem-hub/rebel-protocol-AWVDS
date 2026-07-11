@@ -9,4 +9,4 @@ DELAY_BETWEEN_REQUESTS = 0.5  # Seconds between requests (be polite)
 OUTPUT_FILE = "report.json"
 LOG_FILE = "scan.log"
 
-USER_AGENT = "Mozilla/5.0 (AVWDS Security Scanner)"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"

@@ -1,12 +1,13 @@
 import httpx
 from urllib.parse import urlparse
 from utils.logger import warning, info
+from config import USER_AGENT
 
 
 class HeadersScanner:
     def __init__(self, headers=None, client=None):
         self.findings = []
-        self.headers = {"User-Agent": "Mozilla/5.0 (AWVDS Scanner)", **(headers or {})}
+        self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
         self._external_client = client is not None
         self.client = client or httpx.AsyncClient(
             timeout=10,

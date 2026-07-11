@@ -1,12 +1,13 @@
 import html
 import httpx
 from utils.logger import warning
+from config import USER_AGENT
 
 
 class XSSScanner:
     def __init__(self, payloads, headers=None, client=None):
         self.payloads = payloads
-        self.headers = {"User-Agent": "Mozilla/5.0 (AWVDS Scanner)", **(headers or {})}
+        self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
         self.findings = []
         self._external_client = client is not None
         self.client = client or httpx.AsyncClient(

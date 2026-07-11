@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="avwds",
     version="1.0.0",
-    author="Your Name",
+    author="Mohammad Zeeshan Khan",
     description="Automated Web Vulnerability Detection System",
     packages=find_packages(),
     install_requires=[

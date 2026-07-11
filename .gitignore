@@ -1,6 +1,7 @@
 venv/
 .venv/
 .codex_python/
+.claude/
 .tmp/
 __pycache__/
 *.pyc

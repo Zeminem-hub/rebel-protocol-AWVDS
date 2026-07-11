@@ -4,6 +4,7 @@ import random
 import string
 from difflib import SequenceMatcher
 from utils.logger import critical
+from config import USER_AGENT
 
 SQL_ERROR_SIGNATURES = [
     "you have an error in your sql syntax",
@@ -29,7 +30,7 @@ def _random_str(n: int) -> str:
 class SQLiScanner:
     def __init__(self, payloads, headers=None, client=None):
         self.payloads = payloads
-        self.headers = {"User-Agent": "Mozilla/5.0 (AWVDS Scanner)", **(headers or {})}
+        self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
         self.findings = []
         self._external_client = client is not None
         self.client = client or httpx.AsyncClient(
