@@ -822,17 +822,46 @@ async function startScan() {
   log("[target] " + url);
   log("[depth] " + depth);
   if (cookies) log("[cookies] session credentials loaded");
-  startProgressSimulation(url);
 
   try {
-    const res = await fetch("/scan", {
+    const startRes = await fetch("/scan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config)
     });
+    const startData = await startRes.json();
+    if (!startRes.ok) throw new Error(startData.error || "Scan failed");
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Scan failed");
+    const scanId = startData.scan_id;
+    log(`[scan] id ${scanId}`, "active");
+
+    let lastPhase = "";
+    while (true) {
+      await new Promise(r => setTimeout(r, 1500));
+      const statusRes = await fetch(`/scan/${scanId}/status`);
+      const st = await statusRes.json();
+      if (!statusRes.ok) throw new Error(st.error || "Status check failed");
+
+      const pct = Math.max(0, Math.min(100, st.progress || 0));
+      setStatus(`${st.status} — ${pct}%`, "scanning");
+      if (st.phase && st.phase !== lastPhase) {
+        setPhase(st.phase, `${st.status}: ${url}`);
+        log(`[${st.phase}] ${st.status}`, "active");
+        lastPhase = st.phase;
+      }
+      if (st.endpoints)
+        document.getElementById("epCount").textContent = `${st.endpoints} endpoints discovered`;
+
+      if (st.done) {
+        if (st.error) throw new Error(st.error);
+        break;
+      }
+    }
+
+    const resRes = await fetch(`/scan/${scanId}/results`);
+    const data = await resRes.json();
+    if (!resRes.ok) throw new Error(data.error || "Results fetch failed");
+    data.scan_id = scanId;
 
     scanRunning = false;
     setPhase("report", "Findings ready");
