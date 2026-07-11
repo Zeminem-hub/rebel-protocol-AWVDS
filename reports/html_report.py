@@ -56,7 +56,7 @@ def _finding_card(idx, f):
     </details>'''
 
 
-def render_html_report(target, findings, duration_seconds=None, timings=None, endpoints=0):
+def render_html_report(target, findings, duration_seconds=None, timings=None, endpoints=0, http_requests=None):
     counts = _summary(findings)
     total = sum(counts.values())
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -103,7 +103,7 @@ def render_html_report(target, findings, duration_seconds=None, timings=None, en
 </head><body>
 <div class="no-print"><button onclick="window.print()">Export as PDF</button></div>
 <h1>AWVDS Scan Report</h1>
-<div class="meta">Target: <b>{html.escape(target)}</b> · {now} · {endpoints} endpoints tested · {dur}</div>
+<div class="meta">Target: <b>{html.escape(target)}</b> · {now} · {endpoints} endpoints tested · {dur}{f" · {http_requests} HTTP requests" if http_requests is not None else ""}</div>
 
 <div class="card">
   {_bar(counts, total)}

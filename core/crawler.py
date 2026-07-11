@@ -7,7 +7,7 @@ from config import USER_AGENT
 
 
 class Crawler:
-    def __init__(self, base_url, depth=2, timeout=10, headers=None):
+    def __init__(self, base_url, depth=2, timeout=10, headers=None, counter=None):
         self.base_url = base_url.rstrip("/")
         self.domain = urlparse(base_url).netloc
         self.depth = depth
@@ -15,6 +15,7 @@ class Crawler:
         self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
         self.visited_urls = set()
         self.endpoints = []
+        self.counter = counter
         self._client = httpx.AsyncClient(
             timeout=self.timeout,
             follow_redirects=True,
@@ -70,6 +71,7 @@ class Crawler:
 
     async def _fetch_page(self, url):
         try:
+            if self.counter: self.counter.bump()
             response = await self._client.get(url)
             text = response.text
             # Cheap tag counts for debugging — helps distinguish blocked/UA-filtered

@@ -5,10 +5,11 @@ from config import USER_AGENT
 
 
 class XSSScanner:
-    def __init__(self, payloads, headers=None, client=None):
+    def __init__(self, payloads, headers=None, client=None, counter=None):
         self.payloads = payloads
         self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
         self.findings = []
+        self.counter = counter
         self._external_client = client is not None
         self.client = client or httpx.AsyncClient(
             timeout=10,
@@ -74,6 +75,7 @@ class XSSScanner:
 
     async def _send_request(self, endpoint, params):
         try:
+            if self.counter: self.counter.bump()
             if endpoint["method"] == "POST":
                 return await self.client.post(endpoint["url"], data=params)
             return await self.client.get(endpoint["url"], params=params)

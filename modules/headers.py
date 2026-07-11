@@ -5,9 +5,10 @@ from config import USER_AGENT
 
 
 class HeadersScanner:
-    def __init__(self, headers=None, client=None):
+    def __init__(self, headers=None, client=None, counter=None):
         self.findings = []
         self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
+        self.counter = counter
         self._external_client = client is not None
         self.client = client or httpx.AsyncClient(
             timeout=10,
@@ -33,6 +34,7 @@ class HeadersScanner:
         info(f"Checking security headers for: {url}")
         domain = urlparse(url).netloc or url
         try:
+            if self.counter: self.counter.bump()
             response = await self.client.get(url)
             headers = response.headers
             present = {h.lower() for h in headers.keys()}

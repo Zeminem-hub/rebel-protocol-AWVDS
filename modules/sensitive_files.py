@@ -10,9 +10,10 @@ INTERESTING_DISALLOW = re.compile(r"(?im)^\s*disallow:\s*(/(?:admin|backup|priva
 
 
 class SensitiveFileScanner:
-    def __init__(self, headers=None, client=None):
+    def __init__(self, headers=None, client=None, counter=None):
         self.findings = []
         self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
+        self.counter = counter
         self._external_client = client is not None
         self.client = client or httpx.AsyncClient(
             timeout=8,
@@ -31,6 +32,7 @@ class SensitiveFileScanner:
         for path in SENSITIVE_PATHS:
             url = base + path
             try:
+                if self.counter: self.counter.bump()
                 response = await self.client.get(url)
             except Exception:
                 continue

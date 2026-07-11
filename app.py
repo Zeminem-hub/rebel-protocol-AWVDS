@@ -65,40 +65,65 @@ async def _run_scan_async(state, target_url, depth, scan_headers, opts):
     from modules.sensitive_files import SensitiveFileScanner
     from modules.csrf         import CSRFScanner
     from utils.payloads       import SQL_PAYLOADS, XSS_PAYLOADS
+    from utils.stats          import RequestCounter
+    from config               import MAX_ENDPOINTS, ENDPOINT_CONCURRENCY
 
     findings = []
+    findings_lock = asyncio.Lock()
     diagnostics = []
     timings = {}
     endpoints = []
+    counter = RequestCounter()
 
     _update(state, phase="crawler", progress=5, status="Crawling target surface")
     t = time.time()
     try:
-        crawler = Crawler(target_url, depth=depth, headers=scan_headers)
+        crawler = Crawler(target_url, depth=depth, headers=scan_headers, counter=counter)
         endpoints = await crawler.start()
     except Exception as e:
         diagnostics.append(f"Crawler failed: {e}")
     timings["crawl"] = round(time.time() - t, 2)
-    _update(state, endpoints=len(endpoints), progress=20)
+    total_crawled = len(endpoints)
 
-    sqli = SQLiScanner(SQL_PAYLOADS, headers=scan_headers) if not opts["no_sqli"] else None
-    xss  = XSSScanner(XSS_PAYLOADS, headers=scan_headers) if not opts["no_xss"] else None
+    # Prioritise endpoints with params, then cap to MAX_ENDPOINTS
+    endpoints.sort(key=lambda ep: (0 if ep.get("params") else 1, ep.get("url", "")))
+    if total_crawled > MAX_ENDPOINTS:
+        diagnostics.append(
+            f"Crawled {total_crawled} endpoints, scanning first {MAX_ENDPOINTS} "
+            f"(raise MAX_ENDPOINTS to scan more)."
+        )
+        endpoints = endpoints[:MAX_ENDPOINTS]
+    _update(state, endpoints=total_crawled, progress=20)
+
+    sqli = SQLiScanner(SQL_PAYLOADS, headers=scan_headers, counter=counter) if not opts["no_sqli"] else None
+    xss  = XSSScanner(XSS_PAYLOADS, headers=scan_headers, counter=counter) if not opts["no_xss"] else None
     csrf = CSRFScanner() if not opts["no_csrf"] else None
     try:
         _update(state, phase="payloads", status="Testing discovered inputs")
         t_ep = time.time()
         n = max(1, len(endpoints))
-        for i, ep in enumerate(endpoints):
-            if sqli:
-                try: findings.extend(await sqli.scan(ep))
-                except Exception as e: diagnostics.append(f"SQLi failed for {ep.get('url')}: {e}")
-            if xss:
-                try: findings.extend(await xss.scan(ep))
-                except Exception as e: diagnostics.append(f"XSS failed for {ep.get('url')}: {e}")
-            if csrf:
-                try: findings.extend(await csrf.scan(ep))
-                except Exception as e: diagnostics.append(f"CSRF failed for {ep.get('url')}: {e}")
-            _update(state, progress=20 + int(60 * (i + 1) / n), findings_so_far=len(findings))
+        completed = 0
+        sem = asyncio.Semaphore(ENDPOINT_CONCURRENCY)
+
+        async def scan_one(ep):
+            nonlocal completed
+            local = []
+            async with sem:
+                if sqli:
+                    try: local.extend(await sqli.scan(ep))
+                    except Exception as e: diagnostics.append(f"SQLi failed for {ep.get('url')}: {e}")
+                if xss:
+                    try: local.extend(await xss.scan(ep))
+                    except Exception as e: diagnostics.append(f"XSS failed for {ep.get('url')}: {e}")
+                if csrf:
+                    try: local.extend(await csrf.scan(ep))
+                    except Exception as e: diagnostics.append(f"CSRF failed for {ep.get('url')}: {e}")
+            async with findings_lock:
+                findings.extend(local)
+                completed += 1
+                _update(state, progress=20 + int(60 * completed / n), findings_so_far=len(findings))
+
+        await asyncio.gather(*(scan_one(ep) for ep in endpoints))
         timings["per_endpoint_scans"] = round(time.time() - t_ep, 2)
     finally:
         if sqli: await sqli.close()
@@ -108,7 +133,7 @@ async def _run_scan_async(state, target_url, depth, scan_headers, opts):
     if not opts["no_headers"]:
         _update(state, phase="posture", status="Checking security headers", progress=85)
         t = time.time()
-        hs = HeadersScanner(headers=scan_headers)
+        hs = HeadersScanner(headers=scan_headers, counter=counter)
         try: findings.extend(await hs.scan(target_url))
         except Exception as e: diagnostics.append(f"Headers scanner failed: {e}")
         finally: await hs.close()
@@ -117,13 +142,14 @@ async def _run_scan_async(state, target_url, depth, scan_headers, opts):
     if not opts["no_files"]:
         _update(state, phase="posture", status="Probing sensitive paths", progress=92)
         t = time.time()
-        fs = SensitiveFileScanner(headers=scan_headers)
+        fs = SensitiveFileScanner(headers=scan_headers, counter=counter)
         try: findings.extend(await fs.scan(target_url))
         except Exception as e: diagnostics.append(f"Sensitive file scanner failed: {e}")
         finally: await fs.close()
         timings["sensitive_files"] = round(time.time() - t, 2)
 
-    return findings, len(endpoints), diagnostics, timings
+    diagnostics.append(f"Total HTTP requests sent: {counter.count}")
+    return findings, total_crawled, diagnostics, timings, counter.count
 
 
 def _run_scan_thread(scan_id, target_url, depth, scan_headers, opts, min_confidence):
@@ -132,15 +158,15 @@ def _run_scan_thread(scan_id, target_url, depth, scan_headers, opts, min_confide
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        findings, ep_count, diagnostics, timings = loop.run_until_complete(
+        findings, ep_count, diagnostics, timings, request_count = loop.run_until_complete(
             asyncio.wait_for(
                 _run_scan_async(state, target_url, depth, scan_headers, opts),
-                timeout=300,
+                timeout=480,
             )
         )
         loop.close()
     except asyncio.TimeoutError:
-        _update(state, done=True, error="Scan exceeded 5-minute timeout", progress=100, status="Timed out")
+        _update(state, done=True, error="Scan exceeded 8-minute timeout", progress=100, status="Timed out")
         return
     except Exception as e:
         _update(state, done=True, error=str(e), progress=100, status="Failed")
@@ -166,6 +192,7 @@ def _run_scan_thread(scan_id, target_url, depth, scan_headers, opts, min_confide
         "diagnostics": diagnostics,
         "duration_seconds": round(time.time() - started, 2),
         "timings":    timings,
+        "http_requests": request_count,
     }
     _update(state, done=True, progress=100, status="Scan complete", result=result, phase="report")
 
@@ -278,6 +305,7 @@ def scan_report_html(scan_id):
             duration_seconds=r.get("duration_seconds"),
             timings=r.get("timings"),
             endpoints=r.get("endpoints", 0),
+            http_requests=r.get("http_requests"),
         ),
         mimetype="text/html",
     )

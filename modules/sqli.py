@@ -28,10 +28,11 @@ def _random_str(n: int) -> str:
 
 
 class SQLiScanner:
-    def __init__(self, payloads, headers=None, client=None):
+    def __init__(self, payloads, headers=None, client=None, counter=None):
         self.payloads = payloads
         self.headers = {"User-Agent": USER_AGENT, **(headers or {})}
         self.findings = []
+        self.counter = counter
         self._external_client = client is not None
         self.client = client or httpx.AsyncClient(
             timeout=12,
@@ -56,7 +57,10 @@ class SQLiScanner:
             for payload in self.payloads:
                 test_params = dict(endpoint["params"])
                 test_params[param_name] = payload
+                is_time_payload = "SLEEP" in payload.upper() or "WAITFOR" in payload.upper()
+                start_time = time.time()
                 response = await self._send_request(endpoint, test_params)
+                elapsed = time.time() - start_time
                 if response is None:
                     continue
 
@@ -80,10 +84,7 @@ class SQLiScanner:
                 if error_hit:
                     continue
 
-                if "SLEEP" in payload.upper() or "WAITFOR" in payload.upper():
-                    start_time = time.time()
-                    await self._send_request(endpoint, test_params)
-                    elapsed = time.time() - start_time
+                if is_time_payload:
                     if elapsed >= 4.5:
                         # Confirm by sending a benign string of similar length
                         confirm_params = dict(endpoint["params"])
@@ -134,6 +135,7 @@ class SQLiScanner:
 
     async def _send_request(self, endpoint, params):
         try:
+            if self.counter: self.counter.bump()
             if endpoint["method"] == "POST":
                 return await self.client.post(endpoint["url"], data=params)
             return await self.client.get(endpoint["url"], params=params)
