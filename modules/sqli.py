@@ -46,6 +46,7 @@ class SQLiScanner:
             await self.client.aclose()
 
     async def scan(self, endpoint):
+        local: list[dict] = []
         # Baseline with a benign value
         baseline_params = dict(endpoint["params"])
         baseline_value = _random_str(6)
@@ -68,7 +69,7 @@ class SQLiScanner:
                 error_hit = False
                 for signature in SQL_ERROR_SIGNATURES:
                     if signature in response_lower:
-                        self.findings.append({
+                        local.append({
                             "type": "SQL Injection (Error-Based)",
                             "url": endpoint["url"],
                             "parameter": param_name,
@@ -93,7 +94,7 @@ class SQLiScanner:
                         await self._send_request(endpoint, confirm_params)
                         c_elapsed = time.time() - c_start
                         if c_elapsed < 3.0:
-                            self.findings.append({
+                            local.append({
                                 "type": "SQL Injection (Time-Based Blind)",
                                 "url": endpoint["url"],
                                 "parameter": param_name,
@@ -120,7 +121,7 @@ class SQLiScanner:
                             if c_sim < 0.40 and c_len_delta > 500:
                                 # Dynamic page — not SQLi
                                 continue
-                        self.findings.append({
+                        local.append({
                             "type": "SQL Injection (Boolean-Based)",
                             "url": endpoint["url"],
                             "parameter": param_name,
@@ -131,7 +132,7 @@ class SQLiScanner:
                             "description": f"Response for '{param_name}' diverges from baseline in a way consistent with boolean-based SQLi",
                         })
 
-        return self.findings
+        return local
 
     async def _send_request(self, endpoint, params):
         try:

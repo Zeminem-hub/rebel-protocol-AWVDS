@@ -39,9 +39,17 @@ def _finding_card(idx, f):
     sev = f.get("severity", "INFO")
     color = SEVERITY_COLORS.get(sev, "#8a8fa3")
     fields = []
-    for key in ("url", "parameter", "payload", "evidence", "confidence"):
-        if key in f and f[key] not in (None, ""):
+    for key in ("url", "parameter", "payload", "evidence", "confidence", "occurrence_count"):
+        if key in f and f[key] not in (None, "", 0):
             fields.append(f'<div class="row"><span class="k">{key}</span><code>{html.escape(str(f[key]))}</code></div>')
+    urls = f.get("affected_urls") or []
+    if len(urls) > 1:
+        u_html = "".join(f"<li><code>{html.escape(u)}</code></li>" for u in urls[:50])
+        extra = f" (showing first 50 of {len(urls)})" if len(urls) > 50 else ""
+        fields.append(
+            f'<div class="row"><span class="k">affected</span>'
+            f'<ul style="margin:0;padding-left:18px">{u_html}</ul>{extra}</div>'
+        )
     fields_html = "".join(fields)
     return f'''
     <details class="finding" style="border-left-color:{color}">

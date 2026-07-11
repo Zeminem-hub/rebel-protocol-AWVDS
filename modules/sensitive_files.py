@@ -27,6 +27,7 @@ class SensitiveFileScanner:
             await self.client.aclose()
 
     async def scan(self, base_url):
+        local: list[dict] = []
         base = base_url.rstrip("/")
 
         for path in SENSITIVE_PATHS:
@@ -41,7 +42,7 @@ class SensitiveFileScanner:
                 if path in PUBLIC_PATHS:
                     interesting = INTERESTING_DISALLOW.findall(response.text or "")
                     if interesting:
-                        self.findings.append({
+                        local.append({
                             "type": "Recon: Sensitive Paths in robots/sitemap",
                             "url": url,
                             "severity": "INFO",
@@ -50,7 +51,7 @@ class SensitiveFileScanner:
                             "description": f"{path} advertises restricted paths that may be worth reviewing",
                         })
                     else:
-                        self.findings.append({
+                        local.append({
                             "type": "Public Metadata File",
                             "url": url,
                             "severity": "INFO",
@@ -61,7 +62,7 @@ class SensitiveFileScanner:
                     continue
 
                 severity = "CRITICAL" if any(x in path for x in [".env", ".git", "config", "sql", "backup"]) else "HIGH"
-                self.findings.append({
+                local.append({
                     "type": "Sensitive File Exposed",
                     "url": url,
                     "severity": severity,
@@ -72,7 +73,7 @@ class SensitiveFileScanner:
                 critical(f"Sensitive file found: {url}")
 
             elif response.status_code == 403 and path not in PUBLIC_PATHS:
-                self.findings.append({
+                local.append({
                     "type": "Sensitive Path Exists (Forbidden)",
                     "url": url,
                     "severity": "LOW",
@@ -81,4 +82,4 @@ class SensitiveFileScanner:
                     "description": f"Path '{path}' exists but access is restricted",
                 })
 
-        return self.findings
+        return local

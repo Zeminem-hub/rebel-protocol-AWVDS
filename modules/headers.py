@@ -31,6 +31,7 @@ class HeadersScanner:
             await self.client.aclose()
 
     async def scan(self, url):
+        local: list[dict] = []
         info(f"Checking security headers for: {url}")
         domain = urlparse(url).netloc or url
         try:
@@ -41,7 +42,7 @@ class HeadersScanner:
 
             for header, (severity, purpose) in self.required_headers.items():
                 if header.lower() not in present:
-                    self.findings.append({
+                    local.append({
                         "type": f"Missing Security Header: {header}",
                         "url": f"https://{domain}" if not url.startswith("http") else url,
                         "severity": severity,
@@ -53,7 +54,7 @@ class HeadersScanner:
             for header in self.info_disclosure_headers:
                 if header.lower() in present:
                     value = headers.get(header, "")
-                    self.findings.append({
+                    local.append({
                         "type": f"Server Information Disclosure: {header}",
                         "url": url,
                         "severity": "LOW",
@@ -64,4 +65,4 @@ class HeadersScanner:
         except Exception:
             pass
 
-        return self.findings
+        return local

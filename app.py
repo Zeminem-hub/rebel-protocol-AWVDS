@@ -57,6 +57,47 @@ def _update(state: dict, **kwargs):
         state.update(kwargs)
 
 
+def _dedupe_findings(findings: list[dict]) -> list[dict]:
+    """Collapse findings that repeat the same (domain, type, parameter,
+    severity) across many URLs into a single card with an affected_urls
+    list. Prevents 645-item walls of duplicated reflections/headers."""
+    from urllib.parse import urlparse
+    groups: dict[tuple, dict] = {}
+    order: list[tuple] = []
+    for f in findings:
+        url = f.get("url", "")
+        domain = urlparse(url).netloc or url
+        key = (domain, f.get("type", ""), f.get("parameter", "-"), f.get("severity", "INFO"))
+        if key not in groups:
+            merged = dict(f)
+            merged["affected_urls"] = [url] if url else []
+            merged["occurrence_count"] = 1
+            groups[key] = merged
+            order.append(key)
+        else:
+            g = groups[key]
+            if url and url not in g["affected_urls"]:
+                g["affected_urls"].append(url)
+            g["occurrence_count"] += 1
+            # Keep the highest-confidence sample as the representative
+            if f.get("confidence", 0) > g.get("confidence", 0):
+                for k in ("payload", "evidence", "confidence"):
+                    if k in f:
+                        g[k] = f[k]
+    merged_list = []
+    for key in order:
+        g = groups[key]
+        n = len(g["affected_urls"])
+        if n > 1:
+            g["url"] = f"{n} URLs on {key[0]}"
+            g["description"] = (
+                f"{g.get('description','')} "
+                f"(same issue observed on {n} URLs — see affected_urls)"
+            ).strip()
+        merged_list.append(g)
+    return merged_list
+
+
 async def _run_scan_async(state, target_url, depth, scan_headers, opts):
     from core.crawler         import Crawler
     from modules.sqli         import SQLiScanner
@@ -173,6 +214,10 @@ def _run_scan_thread(scan_id, target_url, depth, scan_headers, opts, min_confide
         return
 
     filtered = [f for f in findings if f.get("confidence", 100) >= min_confidence]
+    raw_total = len(filtered)
+    filtered = _dedupe_findings(filtered)
+    diagnostics.append(f"Findings: {raw_total} raw -> {len(filtered)} after dedup")
+
     severity_rank = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
     filtered.sort(key=lambda x: severity_rank.get(x.get("severity", "INFO"), 4))
 
@@ -193,6 +238,7 @@ def _run_scan_thread(scan_id, target_url, depth, scan_headers, opts, min_confide
         "duration_seconds": round(time.time() - started, 2),
         "timings":    timings,
         "http_requests": request_count,
+        "total_raw":  raw_total,
     }
     _update(state, done=True, progress=100, status="Scan complete", result=result, phase="report")
 

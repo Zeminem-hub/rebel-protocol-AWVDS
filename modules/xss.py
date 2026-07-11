@@ -23,8 +23,14 @@ class XSSScanner:
             await self.client.aclose()
 
     async def scan(self, endpoint):
+        # One XSS finding per (endpoint URL, parameter). The first reflected
+        # payload proves the parameter is exploitable; extra payloads are noise.
+        local: list[dict] = []
+        flagged: set[tuple[str, str]] = set()
         for param_name in endpoint["params"]:
             for payload in self.payloads:
+                if (endpoint["url"], param_name) in flagged:
+                    break
                 test_params = dict(endpoint["params"])
                 test_params[param_name] = payload
                 response = await self._send_request(endpoint, test_params)
@@ -33,7 +39,7 @@ class XSSScanner:
 
                 body = response.text
                 if payload in body:
-                    self.findings.append({
+                    local.append({
                         "type": "Cross-Site Scripting (Reflected XSS)",
                         "url": endpoint["url"],
                         "parameter": param_name,
@@ -43,6 +49,7 @@ class XSSScanner:
                         "description": f"Payload was reflected verbatim in response for parameter '{param_name}'",
                     })
                     warning(f"XSS found! URL: {endpoint['url']} | Param: {param_name}")
+                    flagged.add((endpoint["url"], param_name))
                     continue
 
                 # Partial encoding: some frameworks encode < > but leave quotes raw.
@@ -58,7 +65,8 @@ class XSSScanner:
                 ):
                     stripped = payload.replace("<", "").replace(">", "")
                     if stripped and stripped in body:
-                        self.findings.append({
+                        flagged.add((endpoint["url"], param_name))
+                        local.append({
                             "type": "Cross-Site Scripting (Partial Encoding)",
                             "url": endpoint["url"],
                             "parameter": param_name,
@@ -71,7 +79,7 @@ class XSSScanner:
                             ),
                         })
 
-        return self.findings
+        return local
 
     async def _send_request(self, endpoint, params):
         try:

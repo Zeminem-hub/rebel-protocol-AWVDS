@@ -13,15 +13,16 @@ class CSRFScanner:
         return None
 
     async def scan(self, endpoint, page_html=None):
+        local: list[dict] = []
         if endpoint["method"] != "POST":
-            return []
+            return local
 
         params = endpoint["params"]
         param_names_lower = [p.lower() for p in params.keys()]
         has_csrf_token = any(t in param_names_lower for t in self.csrf_token_names)
 
         if not has_csrf_token:
-            self.findings.append({
+            local.append({
                 "type": "Missing CSRF Token",
                 "url": endpoint["url"],
                 "severity": "MEDIUM",
@@ -30,4 +31,4 @@ class CSRFScanner:
             })
             warning(f"CSRF vulnerability: {endpoint['url']}")
 
-        return self.findings
+        return local
