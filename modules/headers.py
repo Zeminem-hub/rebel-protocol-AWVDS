@@ -1,11 +1,19 @@
 import httpx
+from urllib.parse import urlparse
 from utils.logger import warning, info
 
+
 class HeadersScanner:
-    def __init__(self, headers=None):
+    def __init__(self, headers=None, client=None):
         self.findings = []
-        self.headers = headers or {}
-        # Header name → (severity, what it does)
+        self.headers = {"User-Agent": "Mozilla/5.0 (AWVDS Scanner)", **(headers or {})}
+        self._external_client = client is not None
+        self.client = client or httpx.AsyncClient(
+            timeout=10,
+            follow_redirects=True,
+            headers=self.headers,
+            limits=httpx.Limits(max_connections=10),
+        )
         self.required_headers = {
             "Content-Security-Policy":   ("HIGH",   "Prevents XSS attacks"),
             "Strict-Transport-Security": ("HIGH",   "Forces HTTPS"),
@@ -14,44 +22,43 @@ class HeadersScanner:
             "Referrer-Policy":           ("LOW",    "Controls referrer info"),
             "Permissions-Policy":        ("LOW",    "Controls browser features"),
         }
-        # Headers that reveal server info (bad)
-        self.info_disclosure_headers = [
-            "Server", "X-Powered-By", "X-AspNet-Version", "X-Generator"
-        ]
+        self.info_disclosure_headers = ["Server", "X-Powered-By", "X-AspNet-Version", "X-Generator"]
+
+    async def close(self):
+        if not self._external_client:
+            await self.client.aclose()
 
     async def scan(self, url):
         info(f"Checking security headers for: {url}")
+        domain = urlparse(url).netloc or url
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.get(url, headers=self.headers)
-                headers = response.headers
+            response = await self.client.get(url)
+            headers = response.headers
+            present = {h.lower() for h in headers.keys()}
 
-                # Check missing security headers
-                for header, (severity, purpose) in self.required_headers.items():
-                    if header.lower() not in [h.lower() for h in headers.keys()]:
-                        finding = {
-                            "type": f"Missing Security Header: {header}",
-                            "url": url,
-                            "severity": severity,
-                            "description": f"Header '{header}' is missing. Purpose: {purpose}"
-                        }
-                        self.findings.append(finding)
-                        warning(f"Missing header: {header}")
+            for header, (severity, purpose) in self.required_headers.items():
+                if header.lower() not in present:
+                    self.findings.append({
+                        "type": f"Missing Security Header: {header}",
+                        "url": f"https://{domain}" if not url.startswith("http") else url,
+                        "severity": severity,
+                        "confidence": 90,
+                        "description": f"Header '{header}' is missing on {domain}. Purpose: {purpose}",
+                    })
+                    warning(f"Missing header: {header}")
 
-                # Check information disclosure headers
-                for header in self.info_disclosure_headers:
-                    if header.lower() in [h.lower() for h in headers.keys()]:
-                        value = headers.get(header, "")
-                        finding = {
-                            "type": f"Server Information Disclosure: {header}",
-                            "url": url,
-                            "severity": "LOW",
-                            "evidence": value,
-                            "description": f"Header '{header}: {value}' reveals server technology"
-                        }
-                        self.findings.append(finding)
-
-        except Exception as e:
+            for header in self.info_disclosure_headers:
+                if header.lower() in present:
+                    value = headers.get(header, "")
+                    self.findings.append({
+                        "type": f"Server Information Disclosure: {header}",
+                        "url": url,
+                        "severity": "LOW",
+                        "confidence": 80,
+                        "evidence": value,
+                        "description": f"Header '{header}: {value}' reveals server technology on {domain}",
+                    })
+        except Exception:
             pass
 
         return self.findings
